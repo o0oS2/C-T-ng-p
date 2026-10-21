@@ -1,0 +1,19 @@
+{
+  "name": "Cờ Tướng Úp",
+  "short_name": "Cờ Úp",
+  "description": "Game Cờ Tướng Úp chữ Hán to rõ dành cho điện thoại và máy tính bảng",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1c1917",
+  "theme_color": "#1c1917",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "192x192 512x512 any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
