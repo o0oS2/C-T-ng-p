@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Cờ Tướng Úp</title>
+
+  <!-- Cấu hình PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#1c1917">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Cờ Úp">
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <link id="appleIcon" rel="apple-touch-icon" href="./icon.svg">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background-color: #1c1917;
+      color: #fef3c7;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .wood-frame {
+      background: linear-gradient(145deg, #d97706, #92400e);
+      padding: 6px;
+      border-radius: 14px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.3);
+      border: 2px solid #78350f;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas {
+      display: block;
+      border-radius: 8px;
+      touch-action: none;
+    }
+    .lvl-btn {
+      transition: all 0.15s ease;
+      border: 2px solid #57534e;
+      background-color: #292524;
+      color: #d6d3d1;
+    }
+    .lvl-btn.active {
+      background-color: #f59e0b;
+      color: #1c1917;
+      border-color: #fef08a;
+      font-weight: 900;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+    }
+    .ctrl-btn:active {
+      transform: scale(0.96);
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-between p-1.5 sm:p-3">
+
+  <!-- 1. Thanh chọn mức độ + Cài App -->
+  <div id="topBar" class="w-full flex flex-col gap-1.5 shrink-0">
+    <div class="grid grid-cols-9 gap-1.5 w-full">
+      <button onclick="setDifficulty(1)" id="lvl-1" class="lvl-btn active col-span-2 py-2 sm:py-3 rounded-xl text-base sm:text-xl font-bold">Rất Dễ</button>
+      <button onclick="setDifficulty(2)" id="lvl-2" class="lvl-btn col-span-2 py-2 sm:py-3 rounded-xl text-base sm:text-xl font-bold">Dễ</button>
+      <button onclick="setDifficulty(3)" id="lvl-3" class="lvl-btn col-span-2 py-2 sm:py-3 rounded-xl text-base sm:text-xl font-bold">Vừa</button>
+      <button onclick="setDifficulty(4)" id="lvl-4" class="lvl-btn col-span-2 py-2 sm:py-3 rounded-xl text-base sm:text-xl font-bold">Khó</button>
+      <button onclick="toggleSound()" id="soundBtn" class="col-span-1 py-2 sm:py-3 rounded-xl bg-stone-800 border-2 border-stone-600 text-amber-300 text-lg sm:text-2xl font-bold flex items-center justify-center">🔊</button>
+    </div>
+
+    <div class="w-full bg-stone-800/95 border border-stone-700 rounded-xl px-3 py-1.5 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span id="turnDot" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-red-500 animate-pulse inline-block"></span>
+        <span id="statusText" class="text-base sm:text-2xl font-extrabold text-amber-300">Lượt bạn (Quân Đỏ)</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="checkAlert" class="hidden px-2.5 py-0.5 bg-red-600 text-white font-black text-sm sm:text-xl rounded-lg animate-bounce">⚡ CHIẾU TƯỚNG!</span>
+        <button id="installBtn" onclick="installPWA()" class="hidden px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-base rounded-lg border border-emerald-300 shadow">📲 Cài App</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Bàn cờ tự động giãn tối đa theo màn hình -->
+  <div id="boardArea" class="flex-1 w-full flex items-center justify-center my-1 overflow-hidden">
+    <div class="wood-frame">
+      <canvas id="chessCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- 3. Cụm điều khiển & Quân đã ăn ở dưới cùng -->
+  <div id="bottomBar" class="w-full flex flex-col gap-1.5 shrink-0">
+    <div class="grid grid-cols-2 gap-2.5 w-full">
+      <button id="undoBtn" onclick="undoMove()" disabled class="ctrl-btn py-2.5 sm:py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-stone-950 font-black text-lg sm:text-2xl shadow-lg border-2 border-amber-200 flex items-center justify-center gap-2">
+        <span>↩️ ĐI LẠI</span>
+        <span id="undoBadge" class="bg-stone-900 text-amber-300 px-2 py-0.5 rounded-md text-sm sm:text-lg">0</span>
+      </button>
+      <button onclick="confirmNewGame()" class="ctrl-btn py-2.5 sm:py-3.5 rounded-xl bg-red-700 hover:bg-red-600 text-white font-black text-lg sm:text-2xl shadow-lg border-2 border-red-400 flex items-center justify-center gap-2">
+        <span>🔄 VÁN MỚI</span>
+      </button>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 w-full bg-stone-800/90 border border-stone-700 rounded-xl p-2">
+      <div class="flex flex-col">
+        <div class="flex justify-between items-center text-xs sm:text-base font-bold text-red-300 mb-0.5">
+          <span>BẠN ĂN ĐƯỢC:</span>
+          <span id="blackHiddenCount" class="bg-stone-900 px-1.5 py-0.5 rounded text-stone-300">Đen úp: 15</span>
+        </div>
+        <div id="capturedByRed" class="min-h-[28px] sm:min-h-[38px] flex flex-wrap items-center gap-1 bg-stone-900/80 rounded-lg px-2 py-1 text-lg sm:text-2xl font-black text-sky-300"></div>
+      </div>
+      <div class="flex flex-col">
+        <div class="flex justify-between items-center text-xs sm:text-base font-bold text-sky-300 mb-0.5">
+          <span>MÁY ĂN ĐƯỢC:</span>
+          <span id="redHiddenCount" class="bg-stone-900 px-1.5 py-0.5 rounded text-stone-300">Đỏ úp: 15</span>
+        </div>
+        <div id="capturedByBlack" class="min-h-[28px] sm:min-h-[38px] flex flex-wrap items-center gap-1 bg-stone-900/80 rounded-lg px-2 py-1 text-lg sm:text-2xl font-black text-red-400"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hộp thoại kết thúc hoặc xác nhận -->
+  <div id="modalOverlay" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4">
+    <div class="bg-stone-800 border-4 border-amber-500 rounded-2xl max-w-md w-full p-6 text-center shadow-2xl">
+      <div id="modalIcon" class="text-6xl mb-3">🏆</div>
+      <h2 id="modalTitle" class="text-2xl sm:text-3xl font-black text-amber-300 mb-2">CHIẾN THẮNG!</h2>
+      <p id="modalMsg" class="text-lg sm:text-xl text-stone-200 mb-6">Chúc mừng bạn đã thắng ván cờ!</p>
+      <div id="modalButtons" class="flex gap-3 justify-center"></div>
+    </div>
+  </div>
+
+  <script>
+    // --- ĐĂNG KÝ SERVICE WORKER & TỰ TẠO ICON PNG CHO IOS ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('installBtn').classList.remove('hidden');
+    });
+
+    async function installPWA() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        document.getElementById('installBtn').classList.add('hidden');
+      }
+      deferredPrompt = null;
+    }
+
+    // Tạo Apple Touch Icon PNG tự động cho iOS/iPadOS
+    (function generateAppleTouchIcon() {
+      try {
+        const c = document.createElement('canvas');
+        c.width = 180; c.height = 180;
+        const x = c.getContext('2d');
+        x.fillStyle = '#291509';
+        x.fillRect(0, 0, 180, 180);
+        const g = x.createRadialGradient(75, 70, 10, 90, 90, 75);
+        g.addColorStop(0, '#fffef8');
+        g.addColorStop(0.75, '#fde68a');
+        g.addColorStop(1, '#d97706');
+        x.beginPath();
+        x.arc(90, 90, 74, 0, Math.PI * 2);
+        x.fillStyle = g;
+        x.fill();
+        x.lineWidth = 6;
+        x.strokeStyle = '#92400e';
+        x.stroke();
+        x.fillStyle = '#dc2626';
+        x.font = '900 88px "KaiTi", "STKaiti", "PMingLiU", serif';
+        x.textAlign = 'center';
+        x.textBaseline = 'middle';
+        x.fillText('帅', 90, 95);
+        document.getElementById('appleIcon').href = c.toDataURL('image/png');
+      } catch (e) {}
+    })();
+
+    // --- LOGIC CỜ TƯỚNG ÚP ---
+    const COLS = 9;
+    const ROWS = 10;
+
+    const PIECE_INFO = {
+      K: { hanRed: '帅', hanBlack: '將', value: 10000 },
+      R: { hanRed: '俥', hanBlack: '車', value: 900 },
+      C: { hanRed: '炮', hanBlack: '砲', value: 450 },
+      N: { hanRed: '傌', hanBlack: '馬', value: 400 },
+      B: { hanRed: '相', hanBlack: '象', value: 250 },
+      A: { hanRed: '仕', hanBlack: '士', value: 250 },
+      P: { hanRed: '兵', hanBlack: '卒', value: 150 }
+    };
+
+    const SLOT_ROLES = {
+      '0,0': 'R', '0,1': 'N', '0,2': 'B', '0,3': 'A', '0,4': 'K', '0,5': 'A', '0,6': 'B', '0,7': 'N', '0,8': 'R',
+      '2,1': 'C', '2,7': 'C',
+      '3,0': 'P', '3,2': 'P', '3,4': 'P', '3,6': 'P', '3,8': 'P',
+      '9,0': 'R', '9,1': 'N', '9,2': 'B', '9,3': 'A', '9,4': 'K', '9,5': 'A', '9,6': 'B', '9,7': 'N', '9,8': 'R',
+      '7,1': 'C', '7,7': 'C',
+      '6,0': 'P', '6,2': 'P', '6,4': 'P', '6,6': 'P', '6,8': 'P'
+    };
+
+    const canvas = document.getElementById('chessCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let cellSize = 48;
+    let margin = 32;
+    let board = [];
+    let turn = 'r';
+    let selected = null;
+    let validMoves = [];
+    let historyStack = [];
+    let capturedByRed = [];
+    let capturedByBlack = [];
+    let lastMove = null;
+    let difficulty = 1;
+    let soundOn = true;
+    let gameOver = false;
+    let aiThinking = false;
+
+    let audioCtx = null;
+    function playTone(type) {
+      if (!soundOn) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'select') {
+          osc.frequency.setValueAtTime(520, now);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
+          osc.start(now); osc.stop(now + 0.06);
+        } else if (type === 'move') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.exponentialRampToValueAtTime(140, now + 0.09);
+          gain.gain.setValueAtTime(0.28, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+          osc.start(now); osc.stop(now + 0.09);
+        } else if (type === 'capture') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(90, now + 0.14);
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+          osc.start(now); osc.stop(now + 0.14);
+        } else if (type === 'check') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(660, now);
+          osc.frequency.setValueAtTime(880, now + 0.1);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+          osc.start(now); osc.stop(now + 0.28);
+        }
+      } catch (e) {}
+    }
+
+    function toggleSound() {
+      soundOn = !soundOn;
+      document.getElementById('soundBtn').textContent = soundOn ? '🔊' : '🔇';
+    }
+
+    function setDifficulty(lvl) {
+      difficulty = lvl;
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById('lvl-' + i).classList.toggle('active', i === lvl);
+      }
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function initGame() {
+      board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+      const pool = ['R','R','N','N','B','B','A','A','C','C','P','P','P','P','P'];
+      const redPool = shuffle(pool);
+      const blackPool = shuffle(pool);
+      let rIdx = 0, bIdx = 0;
+
+      for (const key in SLOT_ROLES) {
+        const [r, c] = key.split(',').map(Number);
+        const slotRole = SLOT_ROLES[key];
+        const color = r >= 5 ? 'r' : 'b';
+        if (slotRole === 'K') {
+          board[r][c] = { color, trueType: 'K', slotRole: 'K', isHidden: false };
+        } else {
+          const trueType = color === 'r' ? redPool[rIdx++] : blackPool[bIdx++];
+          board[r][c] = { color, trueType, slotRole, isHidden: true };
+        }
+      }
+
+      turn = 'r';
+      selected = null;
+      validMoves = [];
+      historyStack = [];
+      capturedByRed = [];
+      capturedByBlack = [];
+      lastMove = null;
+      gameOver = false;
+      aiThinking = false;
+
+      closeModal();
+      updateUI();
+      resizeBoard();
+    }
+
+    function resizeBoard() {
+      const boardArea = document.getElementById('boardArea');
+      const availW = boardArea.clientWidth - 16;
+      const availH = boardArea.clientHeight - 16;
+
+      const cellByW = availW / 9.25;
+      const cellByH = availH / 10.25;
+      cellSize = Math.max(30, Math.floor(Math.min(cellByW, cellByH)));
+      margin = Math.round(cellSize * 0.62);
+
+      const cssW = Math.round(COLS > 1 ? (COLS - 1) * cellSize + margin * 2 : 300);
+      const cssH = Math.round(ROWS > 1 ? (ROWS - 1) * cellSize + margin * 2 : 340);
+
+      const dpr = window.devicePixelRatio || 1;
+      canvas.style.width = cssW + 'px';
+      canvas.style.height = cssH + 'px';
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const syncWidth = (cssW + 14) + 'px';
+      document.getElementById('topBar').style.maxWidth = syncWidth;
+      document.getElementById('bottomBar').style.maxWidth = syncWidth;
+
+      drawBoard();
+    }
+
+    window.addEventListener('resize', resizeBoard);
+
+    function getActiveRole(piece) {
+      return piece.isHidden ? piece.slotRole : piece.trueType;
+    }
+
+    function inBounds(r, c) {
+      return r >= 0 && r < ROWS && c >= 0 && c < COLS;
+    }
+
+    function inPalace(color, r, c) {
+      if (c < 3 || c > 5) return false;
+      return color === 'r' ? (r >= 7 && r <= 9) : (r >= 0 && r <= 2);
+    }
+
+    function getPseudoMoves(bd, r, c) {
+      const p = bd[r][c];
+      if (!p) return [];
+      const role = getActiveRole(p);
+      const color = p.color;
+      const moves = [];
+
+      const addMove = (nr, nc) => {
+        if (!inBounds(nr, nc)) return false;
+        const target = bd[nr][nc];
+        if (!target) {
+          moves.push({ r: nr, c: nc });
+          return true;
+        }
+        if (target.color !== color) {
+          moves.push({ r: nr, c: nc });
+        }
+        return false;
+      };
+
+      if (role === 'K') {
+        const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+        for (const [dr, dc] of dirs) {
+          const nr = r + dr, nc = c + dc;
+          if (inPalace(color, nr, nc)) addMove(nr, nc);
+        }
+      } else if (role === 'A') {
+        const dirs = [[-1,-1],[-1,1],[1,-1],[1,1]];
+        for (const [dr, dc] of dirs) {
+          const nr = r + dr, nc = c + dc;
+          if (p.isHidden) {
+            if (inPalace(color, nr, nc)) addMove(nr, nc);
+          } else {
+            addMove(nr, nc);
+          }
+        }
+      } else if (role === 'B') {
+        const dirs = [[-2,-2],[-2,2],[2,-2],[2,2]];
+        for (const [dr, dc] of dirs) {
+          const nr = r + dr, nc = c + dc;
+          const er = r + dr / 2, ec = c + dc / 2;
+          if (inBounds(nr, nc) && !bd[er][ec]) {
+            addMove(nr, nc);
+          }
+        }
+      } else if (role === 'N') {
+        const jumps = [
+          [-2,-1,-1,0], [-2,1,-1,0],
+          [2,-1,1,0],   [2,1,1,0],
+          [-1,-2,0,-1], [1,-2,0,-1],
+          [-1,2,0,1],   [1,2,0,1]
+        ];
+        for (const [dr, dc, lr, lc] of jumps) {
+          const nr = r + dr, nc = c + dc;
+          const br = r + lr, bc = c + lc;
+          if (inBounds(nr, nc) && !bd[br][bc]) {
+            addMove(nr, nc);
+          }
+        }
+      } else if (role === 'R') {
+        const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+        for (const [dr, dc] of dirs) {
+          let nr = r + dr, nc = c + dc;
+          while (inBounds(nr, nc)) {
+            if (!bd[nr][nc]) {
+              moves.push({ r: nr, c: nc });
+            } else {
+              if (bd[nr][nc].color !== color) moves.push({ r: nr, c: nc });
+              break;
+            }
+            nr += dr; nc += dc;
+          }
+        }
+      } else if (role === 'C') {
+        const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+        for (const [dr, dc] of dirs) {
+          let nr = r + dr, nc = c + dc;
+          let jumped = false;
+          while (inBounds(nr, nc)) {
+            if (!jumped) {
+              if (!bd[nr][nc]) {
+                moves.push({ r: nr, c: nc });
+              } else {
+                jumped = true;
+              }
+            } else {
+              if (bd[nr][nc]) {
+                if (bd[nr][nc].color !== color) moves.push({ r: nr, c: nc });
+                break;
+              }
+            }
+            nr += dr; nc += dc;
+          }
+        }
+      } else if (role === 'P') {
+        const forward = color === 'r' ? -1 : 1;
+        addMove(r + forward, c);
+        const crossedRiver = color === 'r' ? r <= 4 : r >= 5;
+        if (crossedRiver) {
+          addMove(r, c - 1);
+          addMove(r, c + 1);
+        }
+      }
+
+      return moves;
+    }
+
+    function cloneBoard(bd) {
+      return bd.map(row => row.map(cell => cell ? { ...cell } : null));
+    }
+
+    function findKing(bd, color) {
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const p = bd[r][c];
+          if (p && p.color === color && !p.isHidden && p.trueType === 'K') {
+            return { r, c };
+          }
+        }
+      }
+      return null;
+    }
+
+    function kingsFacing(bd) {
+      const rk = findKing(bd, 'r');
+      const bk = findKing(bd, 'b');
+      if (!rk || !bk || rk.c !== bk.c) return false;
+      for (let r = bk.r + 1; r < rk.r; r++) {
+        if (bd[r][rk.c]) return false;
+      }
+      return true;
+    }
+
+    function isKingInCheck(bd, color) {
+      if (kingsFacing(bd)) return true;
+      const king = findKing(bd, color);
+      if (!king) return true;
+      const enemy = color === 'r' ? 'b' : 'r';
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const p = bd[r][c];
+          if (p && p.color === enemy) {
+            const mvs = getPseudoMoves(bd, r, c);
+            if (mvs.some(m => m.r === king.r && m.c === king.c)) return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function getLegalMoves(bd, r, c) {
+      const p = bd[r][c];
+      if (!p) return [];
+      const pseudo = getPseudoMoves(bd, r, c);
+      const legal = [];
+      for (const m of pseudo) {
+        const nextBd = cloneBoard(bd);
+        const moving = nextBd[r][c];
+        nextBd[m.r][m.c] = moving;
+        nextBd[r][c] = null;
+        if (moving.isHidden) moving.isHidden = false;
+        if (!isKingInCheck(nextBd, p.color)) {
+          legal.push(m);
+        }
+      }
+      return legal;
+    }
+
+    function getAllLegalMoves(bd, color) {
+      const all = [];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const p = bd[r][c];
+          if (p && p.color === c
