@@ -1,1540 +1,988 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cờ Tướng Úp - Giao Diện To Rõ Cho Người Lớn Tuổi</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif:wght@700;900&family=Be+Vietnam+Pro:wght@600;700;800&display=swap');
-
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-        }
-
-        body {
-            font-family: 'Be Vietnam Pro', sans-serif;
-            background-color: #2b1d12;
-            background-image: radial-gradient(circle at center, #3e2a1b 0%, #1f140c 100%);
-            color: #fef3c7;
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-            min-height: 100dvh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Wood texture effect for board container */
-        .wood-board-frame {
-            background: linear-gradient(145deg, #d99b52, #b87b31);
-            border: 5px solid #5c3811;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.7), inset 0 2px 6px rgba(255,255,255,0.4);
-            border-radius: 16px;
-        }
-
-        /* Large tactile buttons for elderly users */
-        .elder-btn {
-            transition: all 0.15s ease;
-            border-bottom: 5px solid rgba(0,0,0,0.35);
-            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-        }
-        .elder-btn:active:not(:disabled) {
-            transform: translateY(3px);
-            border-bottom-width: 2px;
-        }
-        .elder-btn:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        /* Pulse animation for Check alert */
-        @keyframes pulse-fast {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.06); }
-        }
-        .check-banner {
-            animation: pulse-fast 0.9s infinite ease-in-out;
-        }
-
-        canvas {
-            display: block;
-            touch-action: manipulation;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Cờ Tướng Úp</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background-color: #1c1917;
+      color: #fef3c7;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .wood-frame {
+      background: linear-gradient(145deg, #d97706, #92400e);
+      padding: 6px;
+      border-radius: 14px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.3);
+      border: 2px solid #78350f;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas {
+      display: block;
+      border-radius: 8px;
+      touch-action: none;
+    }
+    .lvl-btn {
+      transition: all 0.15s ease;
+      border: 2px solid #57534e;
+      background-color: #292524;
+      color: #d6d3d1;
+    }
+    .lvl-btn.active {
+      background-color: #f59e0b;
+      color: #1c1917;
+      border-color: #fef08a;
+      font-weight: 900;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+    }
+    .ctrl-btn:active {
+      transform: scale(0.96);
+    }
+  </style>
 </head>
-<body class="flex flex-col lg:flex-row items-center justify-between p-2 sm:p-4 gap-3 max-w-7xl mx-auto w-full h-full">
+<body class="flex flex-col items-center justify-between p-2 sm:p-3">
 
-    <!-- TOP / LEFT PANEL: Controls & Status -->
-    <div class="w-full lg:w-96 flex flex-col gap-2.5 shrink-0">
-        <!-- Header & Turn Status -->
-        <div class="bg-[#3b2616] border-2 border-[#8c5828] rounded-2xl p-3 shadow-lg flex flex-col gap-2">
-            <div class="flex items-center justify-between border-b border-[#5c3a1e] pb-2">
-                <div class="flex items-center gap-2">
-                    <span class="text-2xl sm:text-3xl">♟️</span>
-                    <h1 class="text-xl sm:text-2xl font-extrabold text-amber-300 tracking-wide">CỜ TƯỚNG ÚP</h1>
-                </div>
-                <button id="btnSound" onclick="toggleSound()" class="elder-btn bg-amber-800 hover:bg-amber-700 text-amber-100 px-3 py-1.5 rounded-xl font-bold text-base sm:text-lg flex items-center gap-1.5 border border-amber-600">
-                    <span id="soundIcon">🔊</span> <span id="soundText">Âm thanh</span>
-                </button>
-            </div>
-
-            <!-- Turn & Status Indicator -->
-            <div id="statusBox" class="bg-[#23150b] border-2 border-amber-500/80 rounded-xl p-2.5 text-center transition-all">
-                <div id="turnBadge" class="text-lg sm:text-xl font-extrabold text-red-400 flex items-center justify-center gap-2">
-                    <span class="inline-block w-4 h-4 rounded-full bg-red-500 animate-ping"></span>
-                    <span>LƯỢT CỦA BẠN (QUÂN ĐỎ)</span>
-                </div>
-                <div id="subStatus" class="text-sm sm:text-base text-amber-200/90 font-semibold mt-0.5">
-                    Chạm vào quân cờ Đỏ để chọn nước đi
-                </div>
-            </div>
-        </div>
-
-        <!-- Difficulty Selector ("Rất Dễ" to "Khó") -->
-        <div class="bg-[#3b2616] border-2 border-[#8c5828] rounded-2xl p-3 shadow-lg">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-base sm:text-lg font-extrabold text-amber-200">🎯 MỨC ĐỘ DỄ / KHÓ:</span>
-                <span id="diffDesc" class="text-xs sm:text-sm font-bold bg-green-800 text-green-200 px-2.5 py-0.5 rounded-full">Máy nhường, dễ thắng</span>
-            </div>
-            <div class="grid grid-cols-4 gap-1.5 sm:gap-2">
-                <button onclick="setDifficulty(1)" id="diff-1" class="diff-btn elder-btn py-2 px-1 rounded-xl font-extrabold text-sm sm:text-base bg-green-600 text-white ring-4 ring-yellow-300">
-                    Rất Dễ
-                </button>
-                <button onclick="setDifficulty(2)" id="diff-2" class="diff-btn elder-btn py-2 px-1 rounded-xl font-extrabold text-sm sm:text-base bg-[#593a22] text-amber-200">
-                    Dễ
-                </button>
-                <button onclick="setDifficulty(3)" id="diff-3" class="diff-btn elder-btn py-2 px-1 rounded-xl font-extrabold text-sm sm:text-base bg-[#593a22] text-amber-200">
-                    Vừa
-                </button>
-                <button onclick="setDifficulty(4)" id="diff-4" class="diff-btn elder-btn py-2 px-1 rounded-xl font-extrabold text-sm sm:text-base bg-[#593a22] text-amber-200">
-                    Khó
-                </button>
-            </div>
-        </div>
-
-        <!-- Main Action Buttons (Undo, Language, New Game, Rules) -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2">
-            <!-- Prominent Undo Button -->
-            <button id="btnUndo" onclick="undoMove()" disabled class="elder-btn bg-amber-500 hover:bg-amber-400 text-stone-950 font-black py-3 px-3 rounded-2xl text-lg sm:text-xl flex items-center justify-center gap-2 shadow-lg">
-                <span class="text-2xl">↩️</span>
-                <span>ĐI LẠI</span>
-            </button>
-
-            <!-- Toggle Vietnamese / Chinese Characters -->
-            <button id="btnLang" onclick="cyclePieceStyle()" class="elder-btn bg-teal-700 hover:bg-teal-600 text-white font-extrabold py-3 px-3 rounded-2xl text-base sm:text-lg flex items-center justify-center gap-1.5 shadow-lg border border-teal-400">
-                <span class="text-xl">🔤</span>
-                <span id="langLabel">Chữ: VIỆT TO</span>
-            </button>
-
-            <!-- New Game Button -->
-            <button onclick="confirmNewGame()" class="elder-btn bg-red-700 hover:bg-red-600 text-white font-extrabold py-3 px-3 rounded-2xl text-base sm:text-lg flex items-center justify-center gap-1.5 shadow-lg border border-red-400">
-                <span class="text-xl">🔄</span>
-                <span>VÁN MỚI</span>
-            </button>
-
-            <!-- Guide / Captured Info Button -->
-            <button onclick="toggleHelpModal(true)" class="elder-btn bg-stone-700 hover:bg-stone-600 text-amber-200 font-extrabold py-3 px-3 rounded-2xl text-base sm:text-lg flex items-center justify-center gap-1.5 shadow-lg border border-stone-500">
-                <span class="text-xl">📖</span>
-                <span>LUẬT CHƠI</span>
-            </button>
-        </div>
-
-        <!-- Captured & Remaining Hidden Pieces Summary -->
-        <div class="bg-[#3b2616] border-2 border-[#8c5828] rounded-2xl p-2.5 shadow-lg flex flex-col gap-1.5">
-            <div class="flex justify-between items-center text-xs sm:text-sm font-bold text-amber-300/90 px-1">
-                <span>Quân đã ăn & Quân úp còn lại:</span>
-                <button onclick="giveHint()" class="underline text-yellow-300 hover:text-yellow-100 font-extrabold">💡 Gợi ý nước đi</button>
-            </div>
-            <div class="grid grid-cols-2 gap-2 text-sm">
-                <div class="bg-[#23150b] rounded-xl p-2 border border-red-900/60">
-                    <div class="font-extrabold text-red-400 text-xs sm:text-sm flex justify-between">
-                        <span>🔴 BẠN (ĐỎ)</span>
-                        <span id="redHiddenCount">Úp: 15</span>
-                    </div>
-                    <div id="redCapturedList" class="text-sm sm:text-base font-bold text-amber-100 mt-1 min-h-[1.5rem] flex flex-wrap gap-1">
-                        <span class="text-stone-500 text-xs">Chưa ăn quân nào</span>
-                    </div>
-                </div>
-                <div class="bg-[#23150b] rounded-xl p-2 border border-sky-900/60">
-                    <div class="font-extrabold text-sky-400 text-xs sm:text-sm flex justify-between">
-                        <span>🔵 MÁY (ĐEN)</span>
-                        <span id="blackHiddenCount">Úp: 15</span>
-                    </div>
-                    <div id="blackCapturedList" class="text-sm sm:text-base font-bold text-amber-100 mt-1 min-h-[1.5rem] flex flex-wrap gap-1">
-                        <span class="text-stone-500 text-xs">Chưa ăn quân nào</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <!-- 1. Thanh chọn mức độ & Âm thanh -->
+  <div id="topBar" class="w-full flex flex-col gap-1.5 shrink-0">
+    <div class="grid grid-cols-9 gap-1.5 w-full">
+      <button onclick="setDifficulty(1)" id="lvl-1" class="lvl-btn active col-span-2 py-2.5 sm:py-3.5 rounded-xl text-base sm:text-xl font-bold">Rất Dễ</button>
+      <button onclick="setDifficulty(2)" id="lvl-2" class="lvl-btn col-span-2 py-2.5 sm:py-3.5 rounded-xl text-base sm:text-xl font-bold">Dễ</button>
+      <button onclick="setDifficulty(3)" id="lvl-3" class="lvl-btn col-span-2 py-2.5 sm:py-3.5 rounded-xl text-base sm:text-xl font-bold">Vừa</button>
+      <button onclick="setDifficulty(4)" id="lvl-4" class="lvl-btn col-span-2 py-2.5 sm:py-3.5 rounded-xl text-base sm:text-xl font-bold">Khó</button>
+      <button onclick="toggleSound()" id="soundBtn" class="col-span-1 py-2.5 sm:py-3.5 rounded-xl bg-stone-800 border-2 border-stone-600 text-amber-300 text-lg sm:text-2xl font-bold flex items-center justify-center">🔊</button>
     </div>
 
-    <!-- CENTER / RIGHT PANEL: High-Contrast Chessboard -->
-    <div class="flex-1 w-full flex flex-col items-center justify-center relative min-h-[420px]">
-        <!-- Floating Check / Flip Notification Banner -->
-        <div id="floatingAlert" class="hidden absolute top-3 z-20 pointer-events-none check-banner bg-red-600 text-white border-4 border-yellow-300 px-6 py-2.5 rounded-full font-black text-xl sm:text-2xl shadow-2xl">
-            ⚠️ CHIẾU TƯỚNG!
-        </div>
+    <div class="w-full bg-stone-800/95 border border-stone-700 rounded-xl px-3 py-2 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span id="turnDot" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-red-500 animate-pulse inline-block"></span>
+        <span id="statusText" class="text-base sm:text-2xl font-extrabold text-amber-300">Lượt bạn (Quân Đỏ)</span>
+      </div>
+      <span id="checkAlert" class="hidden px-2.5 py-0.5 bg-red-600 text-white font-black text-sm sm:text-xl rounded-lg animate-bounce">⚡ CHIẾU TƯỚNG!</span>
+    </div>
+  </div>
 
-        <div id="boardContainer" class="wood-board-frame p-1.5 sm:p-2.5 flex items-center justify-center">
-            <canvas id="chessCanvas"></canvas>
-        </div>
+  <!-- 2. Bàn cờ tự động giãn tối đa màn hình -->
+  <div id="boardArea" class="flex-1 w-full flex items-center justify-center my-1 overflow-hidden">
+    <div class="wood-frame">
+      <canvas id="chessCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- 3. Cụm điều khiển dưới cùng -->
+  <div id="bottomBar" class="w-full flex flex-col gap-2 shrink-0">
+    <div class="grid grid-cols-2 gap-3 w-full">
+      <button id="undoBtn" onclick="undoMove()" disabled class="ctrl-btn py-3 sm:py-4 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-stone-950 font-black text-lg sm:text-2xl shadow-lg border-2 border-amber-200 flex items-center justify-center gap-2">
+        <span>↩️ ĐI LẠI</span>
+        <span id="undoBadge" class="bg-stone-900 text-amber-300 px-2 py-0.5 rounded-md text-sm sm:text-lg">0</span>
+      </button>
+      <button onclick="confirmNewGame()" class="ctrl-btn py-3 sm:py-4 rounded-xl bg-red-700 hover:bg-red-600 text-white font-black text-lg sm:text-2xl shadow-lg border-2 border-red-400 flex items-center justify-center gap-2">
+        <span>🔄 VÁN MỚI</span>
+      </button>
     </div>
 
-    <!-- MODAL: Game Over / New Game Confirm -->
-    <div id="gameModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-        <div class="bg-[#3b2616] border-4 border-amber-400 rounded-3xl max-w-md w-full p-6 text-center shadow-2xl">
-            <div id="modalIcon" class="text-6xl mb-3">🏆</div>
-            <h2 id="modalTitle" class="text-2xl sm:text-3xl font-black text-amber-300 mb-2">CHIẾN THẮNG!</h2>
-            <p id="modalMsg" class="text-lg sm:text-xl text-amber-100 font-semibold mb-6 leading-relaxed">
-                Chúc mừng bác đã thắng ván cờ này!
-            </p>
-            <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                <button id="modalUndoBtn" onclick="closeModalAndUndo()" class="elder-btn bg-amber-500 hover:bg-amber-400 text-stone-950 font-black py-3.5 px-6 rounded-2xl text-xl flex-1">
-                    ↩️ Đi Lại Nước Vừa Rồi
-                </button>
-                <button onclick="startNewGame()" class="elder-btn bg-green-600 hover:bg-green-500 text-white font-black py-3.5 px-6 rounded-2xl text-xl flex-1">
-                    🔄 Chơi Ván Mới
-                </button>
-            </div>
+    <div class="grid grid-cols-2 gap-2 w-full bg-stone-800/90 border border-stone-700 rounded-xl p-2">
+      <div class="flex flex-col">
+        <div class="flex justify-between items-center text-xs sm:text-base font-bold text-red-300 mb-0.5">
+          <span>BẠN ĂN:</span>
+          <span id="blackHiddenCount" class="text-stone-300">Đen úp: 15</span>
         </div>
-    </div>
-
-    <!-- MODAL: Confirm New Game Mid-match -->
-    <div id="confirmModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-        <div class="bg-[#3b2616] border-4 border-amber-400 rounded-3xl max-w-md w-full p-6 text-center shadow-2xl">
-            <div class="text-5xl mb-3">🔄</div>
-            <h2 class="text-2xl font-black text-amber-300 mb-2">BẮT ĐẦU VÁN MỚI?</h2>
-            <p class="text-lg text-amber-100 font-semibold mb-6">
-                Bác có muốn xếp lại bàn cờ và chơi ván mới từ đầu không?
-            </p>
-            <div class="flex gap-3 justify-center">
-                <button onclick="toggleConfirmModal(false)" class="elder-btn bg-stone-600 hover:bg-stone-500 text-white font-extrabold py-3.5 px-6 rounded-2xl text-xl flex-1">
-                    Không, chơi tiếp
-                </button>
-                <button onclick="toggleConfirmModal(false); startNewGame();" class="elder-btn bg-red-600 hover:bg-red-500 text-white font-extrabold py-3.5 px-6 rounded-2xl text-xl flex-1">
-                    Có, ván mới
-                </button>
-            </div>
+        <div id="capturedByRed" class="min-h-[28px] sm:min-h-[36px] flex flex-wrap items-center gap-1 bg-stone-900/80 rounded-lg px-2 py-1 text-lg sm:text-2xl font-black text-sky-300"></div>
+      </div>
+      <div class="flex flex-col">
+        <div class="flex justify-between items-center text-xs sm:text-base font-bold text-sky-300 mb-0.5">
+          <span>MÁY ĂN:</span>
+          <span id="redHiddenCount" class="text-stone-300">Đỏ úp: 15</span>
         </div>
+        <div id="capturedByBlack" class="min-h-[28px] sm:min-h-[36px] flex flex-wrap items-center gap-1 bg-stone-900/80 rounded-lg px-2 py-1 text-lg sm:text-2xl font-black text-red-400"></div>
+      </div>
     </div>
+  </div>
 
-    <!-- MODAL: Rules of Cờ Tướng Úp for Elderly -->
-    <div id="helpModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-        <div class="bg-[#3b2616] border-4 border-amber-400 rounded-3xl max-w-lg w-full p-5 sm:p-6 text-left shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center border-b-2 border-amber-700 pb-3 mb-4">
-                <h2 class="text-2xl font-black text-amber-300">📖 HƯỚNG DẪN CỜ TƯỚNG ÚP</h2>
-                <button onclick="toggleHelpModal(false)" class="bg-red-700 text-white font-black px-4 py-1.5 rounded-xl text-lg">Đóng ✕</button>
-            </div>
-            <div class="space-y-3 text-base sm:text-lg text-amber-100 leading-relaxed font-medium">
-                <p>1️⃣ <strong>Khi bắt đầu:</strong> Chỉ có 2 quân <strong>TƯỚNG</strong> được ngửa. Tất cả 30 quân còn lại đều được xáo trộn ngẫu nhiên và <strong>ÚP XUỐNG</strong> tại các vị trí chuẩn trên bàn cờ.</p>
-                <p>2️⃣ <strong>Nước đi đầu tiên (Quân đang Úp):</strong> Quân úp nằm ở vị trí nào thì đi theo luật của vị trí đó (ví dụ: nằm ở ô Mã thì đi chữ L như Mã, nằm ở ô Pháo thì đi và ăn như Pháo, nằm ở ô Tốt thì tiến 1 bước).</p>
-                <p>3️⃣ <strong>Khi Lật Ngửa:</strong> Ngay sau khi đi nước đầu tiên, quân úp sẽ <strong>LẬT NGỬA</strong> và hiện rõ tên thật. Từ các lượt sau, quân đó sẽ đi theo đúng tên thật của mình.</p>
-                <p>4️⃣ <strong>Điểm đặc biệt của Cờ Úp:</strong> Quân <strong>SĨ</strong> và <strong>TƯỢNG</strong> sau khi lật ngửa được phép đi khắp bàn cờ và qua sông để tấn công (Sĩ đi chéo 1 ô, Tượng đi chéo 2 ô).</p>
-                <p>5️⃣ <strong>Mẹo sử dụng:</strong>
-                    <br>• Bấm nút <strong>"↩️ ĐI LẠI"</strong> bất cứ lúc nào nếu bác bấm nhầm.
-                    <br>• Bấm nút <strong>"🔤 Chữ"</strong> để đổi giữa <em>Chữ Việt To</em>, <em>Song Ngữ</em>, hoặc <em>Chữ Hán</em>.
-                    <br>• Chọn mức <strong>"Rất Dễ"</strong> để máy đi hiền hòa, giải trí vui vẻ!
-                </p>
-            </div>
-            <button onclick="toggleHelpModal(false)" class="mt-6 w-full elder-btn bg-amber-500 text-stone-950 font-black py-3.5 rounded-2xl text-xl">
-                ĐÃ HIỂU, QUAY LẠI CHƠI
-            </button>
-        </div>
+  <!-- Hộp thoại kết thúc -->
+  <div id="modalOverlay" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4">
+    <div class="bg-stone-800 border-4 border-amber-500 rounded-2xl max-w-md w-full p-6 text-center shadow-2xl">
+      <div id="modalIcon" class="text-6xl mb-3">🏆</div>
+      <h2 id="modalTitle" class="text-2xl sm:text-3xl font-black text-amber-300 mb-2">CHIẾN THẮNG!</h2>
+      <p id="modalMsg" class="text-lg sm:text-xl text-stone-200 mb-6">Chúc mừng bạn đã thắng ván cờ!</p>
+      <div id="modalButtons" class="flex gap-3 justify-center"></div>
     </div>
+  </div>
 
-    <script>
-        /**************************************************************
-         * 1. SOUND SYSTEM (Web Audio API - Crisp Wooden Clack & Alerts)
-         **************************************************************/
-        let soundEnabled = true;
-        let audioCtx = null;
+  <script>
+    const COLS = 9;
+    const ROWS = 10;
 
-        function initAudio() {
-            if (!audioCtx) {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (AudioContext) audioCtx = new AudioContext();
-            }
-            if (audioCtx && audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+    const PIECE_INFO = {
+      K: { hanRed: '帅', hanBlack: '將', value: 10000 },
+      R: { hanRed: '俥', hanBlack: '車', value: 900 },
+      C: { hanRed: '炮', hanBlack: '砲', value: 450 },
+      N: { hanRed: '傌', hanBlack: '馬', value: 400 },
+      B: { hanRed: '相', hanBlack: '象', value: 250 },
+      A: { hanRed: '仕', hanBlack: '士', value: 250 },
+      P: { hanRed: '兵', hanBlack: '卒', value: 150 }
+    };
+
+    const SLOT_ROLES = {
+      '0,0': 'R', '0,1': 'N', '0,2': 'B', '0,3': 'A', '0,4': 'K', '0,5': 'A', '0,6': 'B', '0,7': 'N', '0,8': 'R',
+      '2,1': 'C', '2,7': 'C',
+      '3,0': 'P', '3,2': 'P', '3,4': 'P', '3,6': 'P', '3,8': 'P',
+      '9,0': 'R', '9,1': 'N', '9,2': 'B', '9,3': 'A', '9,4': 'K', '9,5': 'A', '9,6': 'B', '9,7': 'N', '9,8': 'R',
+      '7,1': 'C', '7,7': 'C',
+      '6,0': 'P', '6,2': 'P', '6,4': 'P', '6,6': 'P', '6,8': 'P'
+    };
+
+    const canvas = document.getElementById('chessCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let cellSize = 48;
+    let margin = 32;
+    let board = [];
+    let turn = 'r';
+    let selected = null;
+    let validMoves = [];
+    let historyStack = [];
+    let capturedByRed = [];
+    let capturedByBlack = [];
+    let lastMove = null;
+    let difficulty = 1;
+    let soundOn = true;
+    let gameOver = false;
+    let aiThinking = false;
+
+    let audioCtx = null;
+    function playTone(type) {
+      if (!soundOn) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'select') {
+          osc.frequency.setValueAtTime(520, now);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
+          osc.start(now); osc.stop(now + 0.06);
+        } else if (type === 'move') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.exponentialRampToValueAtTime(140, now + 0.09);
+          gain.gain.setValueAtTime(0.28, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+          osc.start(now); osc.stop(now + 0.09);
+        } else if (type === 'capture') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(90, now + 0.14);
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+          osc.start(now); osc.stop(now + 0.14);
+        } else if (type === 'check') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(660, now);
+          osc.frequency.setValueAtTime(880, now + 0.1);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+          osc.start(now); osc.stop(now + 0.28);
         }
+      } catch (e) {}
+    }
 
-        function playSound(type) {
-            if (!soundEnabled) return;
-            try {
-                initAudio();
-                if (!audioCtx) return;
-                const now = audioCtx.currentTime;
+    function toggleSound() {
+      soundOn = !soundOn;
+      document.getElementById('soundBtn').textContent = soundOn ? '🔊' : '🔇';
+    }
 
-                if (type === 'select') {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(520, now);
-                    osc.frequency.exponentialRampToValueAtTime(680, now + 0.06);
-                    gain.gain.setValueAtTime(0.18, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    osc.start(now);
-                    osc.stop(now + 0.06);
-                } else if (type === 'move' || type === 'flip') {
-                    // Crisp wooden piece tap sound
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(type === 'flip' ? 260 : 190, now);
-                    osc.frequency.exponentialRampToValueAtTime(55, now + 0.09);
-                    gain.gain.setValueAtTime(0.45, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    osc.start(now);
-                    osc.stop(now + 0.09);
-                } else if (type === 'capture') {
-                    // Double heavy wood clack for capture
-                    [0, 0.05].forEach((offset, idx) => {
-                        const osc = audioCtx.createOscillator();
-                        const gain = audioCtx.createGain();
-                        osc.type = 'square';
-                        osc.frequency.setValueAtTime(idx === 0 ? 150 : 240, now + offset);
-                        osc.frequency.exponentialRampToValueAtTime(45, now + offset + 0.11);
-                        gain.gain.setValueAtTime(0.4, now + offset);
-                        gain.gain.exponentialRampToValueAtTime(0.01, now + offset + 0.11);
-                        osc.connect(gain);
-                        gain.connect(audioCtx.destination);
-                        osc.start(now + offset);
-                        osc.stop(now + offset + 0.11);
-                    });
-                } else if (type === 'check') {
-                    const notes = [587.33, 880];
-                    notes.forEach((freq, i) => {
-                        const osc = audioCtx.createOscillator();
-                        const gain = audioCtx.createGain();
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(freq, now + i * 0.12);
-                        gain.gain.setValueAtTime(0.3, now + i * 0.12);
-                        gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.12 + 0.25);
-                        osc.connect(gain);
-                        gain.connect(audioCtx.destination);
-                        osc.start(now + i * 0.12);
-                        osc.stop(now + i * 0.12 + 0.25);
-                    });
-                } else if (type === 'win') {
-                    const notes = [523.25, 659.25, 783.99, 1046.50];
-                    notes.forEach((freq, i) => {
-                        const osc = audioCtx.createOscillator();
-                        const gain = audioCtx.createGain();
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(freq, now + i * 0.13);
-                        gain.gain.setValueAtTime(0.3, now + i * 0.13);
-                        gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.13 + 0.35);
-                        osc.connect(gain);
-                        gain.connect(audioCtx.destination);
-                        osc.start(now + i * 0.13);
-                        osc.stop(now + i * 0.13 + 0.35);
-                    });
-                }
-            } catch (e) {
-                // Ignore audio errors on restricted devices
-            }
+    function setDifficulty(lvl) {
+      difficulty = lvl;
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById('lvl-' + i).classList.toggle('active', i === lvl);
+      }
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function initGame() {
+      board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+      const pool = ['R','R','N','N','B','B','A','A','C','C','P','P','P','P','P'];
+      const redPool = shuffle(pool);
+      const blackPool = shuffle(pool);
+      let rIdx = 0, bIdx = 0;
+
+      for (const key in SLOT_ROLES) {
+        const [r, c] = key.split(',').map(Number);
+        const slotRole = SLOT_ROLES[key];
+        const color = r >= 5 ? 'r' : 'b';
+        if (slotRole === 'K') {
+          board[r][c] = { color, trueType: 'K', slotRole: 'K', isHidden: false };
+        } else {
+          const trueType = color === 'r' ? redPool[rIdx++] : blackPool[bIdx++];
+          board[r][c] = { color, trueType, slotRole, isHidden: true };
         }
+      }
 
-        function toggleSound() {
-            soundEnabled = !soundEnabled;
-            document.getElementById('soundIcon').textContent = soundEnabled ? '🔊' : '🔇';
-            document.getElementById('soundText').textContent = soundEnabled ? 'Bật tiếng' : 'Tắt tiếng';
-            if (soundEnabled) playSound('select');
+      turn = 'r';
+      selected = null;
+      validMoves = [];
+      historyStack = [];
+      capturedByRed = [];
+      capturedByBlack = [];
+      lastMove = null;
+      gameOver = false;
+      aiThinking = false;
+
+      closeModal();
+      updateUI();
+      resizeBoard();
+    }
+
+    function resizeBoard() {
+      const boardArea = document.getElementById('boardArea');
+      const availW = boardArea.clientWidth - 16;
+      const availH = boardArea.clientHeight - 16;
+
+      const cellByW = availW / 9.25;
+      const cellByH = availH / 10.25;
+      cellSize = Math.max(30, Math.floor(Math.min(cellByW, cellByH)));
+      margin = Math.round(cellSize * 0.62);
+
+      const cssW = Math.round(COLS > 1 ? (COLS - 1) * cellSize + margin * 2 : 300);
+      const cssH = Math.round(ROWS > 1 ? (ROWS - 1) * cellSize + margin * 2 : 340);
+
+      const dpr = window.devicePixelRatio || 1;
+      canvas.style.width = cssW + 'px';
+      canvas.style.height = cssH + 'px';
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const syncWidth = (cssW + 14) + 'px';
+      document.getElementById('topBar').style.maxWidth = syncWidth;
+      document.getElementById('bottomBar').style.maxWidth = syncWidth;
+
+      drawBoard();
+    }
+
+    window.addEventListener('resize', resizeBoard);
+
+    function getActiveRole(piece) {
+      return piece.isHidden ? piece.slotRole : piece.trueType;
+    }
+
+    function inBounds(r, c) {
+      return r >= 0 && r < ROWS && c >= 0 && c < COLS;
+    }
+
+    function inPalace(color, r, c) {
+      if (c < 3 || c > 5) return false;
+      return color === 'r' ? (r >= 7 && r <= 9) : (r >= 0 && r <= 2);
+    }
+
+    function getPseudoMoves(bd, r, c) {
+      const p = bd[r][c];
+      if (!p) return [];
+      const role = getActiveRole(p);
+      const color = p.color;
+      const moves = [];
+
+      const addMove = (nr, nc) => {
+        if (!inBounds(nr, nc)) return false;
+        const target = bd[nr][nc];
+        if (!target) {
+          moves.push({ r: nr, c: nc });
+          return true;
         }
+        if (target.color !== color) {
+          moves.push({ r: nr, c: nc });
+        }
+        return false;
+      };
 
-        /**************************************************************
-         * 2. CHESS PIECE DEFINITIONS & CỜ ÚP RULES
-         **************************************************************/
-        const RED = 'r';
-        const BLACK = 'b';
-
-        // Piece types: K=General, A=Advisor, E=Elephant, H=Horse, R=Chariot, C=Cannon, P=Soldier
-        const PIECE_INFO = {
-            K: { vn: 'TƯỚNG', rHan: '帥', bHan: '將', val: 10000, short: 'Tướng' },
-            R: { vn: 'XE',    rHan: '車', bHan: '車', val: 950,   short: 'Xe' },
-            C: { vn: 'PHÁO',  rHan: '炮', bHan: '砲', val: 480,   short: 'Pháo' },
-            H: { vn: 'MÃ',    rHan: '馬', bHan: '馬', val: 420,   short: 'Mã' },
-            E: { vn: 'TƯỢNG', rHan: '相', bHan: '象', val: 210,   short: 'Tượng' },
-            A: { vn: 'SĨ',    rHan: '仕', bHan: '士', val: 210,   short: 'Sĩ' },
-            P: { vn: 'TỐT',   rHan: '兵', bHan: '卒', val: 140,   short: 'Tốt' }
-        };
-
-        // Display Modes: 'VN' (Large Vietnamese), 'BOTH' (Vietnamese + Chinese), 'HAN' (Large Chinese)
-        let pieceStyleMode = 'BOTH';
-
-        function cyclePieceStyle() {
-            if (pieceStyleMode === 'BOTH') {
-                pieceStyleMode = 'VN';
-                document.getElementById('langLabel').textContent = 'Chữ: VIỆT TO';
-            } else if (pieceStyleMode === 'VN') {
-                pieceStyleMode = 'HAN';
-                document.getElementById('langLabel').textContent = 'Chữ: HÁN TO';
+      if (role === 'K') {
+        const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+        for (const [dr, dc] of dirs) {
+          const nr = r + dr, nc = c + dc;
+          if (inPalace(color, nr, nc)) addMove(nr, nc);
+        }
+      } else if (role === 'A') {
+        const dirs = [[-1,-1],[-1,1],[1,-1],[1,1]];
+        for (const [dr, dc] of dirs) {
+          const nr = r + dr, nc = c + dc;
+          if (p.isHidden) {
+            if (inPalace(color, nr, nc)) addMove(nr, nc);
+          } else {
+            addMove(nr, nc);
+          }
+        }
+      } else if (role === 'B') {
+        const dirs = [[-2,-2],[-2,2],[2,-2],[2,2]];
+        for (const [dr, dc] of dirs) {
+          const nr = r + dr, nc = c + dc;
+          const er = r + dr / 2, ec = c + dc / 2;
+          if (inBounds(nr, nc) && !bd[er][ec]) {
+            addMove(nr, nc);
+          }
+        }
+      } else if (role === 'N') {
+        const jumps = [
+          [-2,-1,-1,0], [-2,1,-1,0],
+          [2,-1,1,0],   [2,1,1,0],
+          [-1,-2,0,-1], [1,-2,0,-1],
+          [-1,2,0,1],   [1,2,0,1]
+        ];
+        for (const [dr, dc, lr, lc] of jumps) {
+          const nr = r + dr, nc = c + dc;
+          const br = r + lr, bc = c + lc;
+          if (inBounds(nr, nc) && !bd[br][bc]) {
+            addMove(nr, nc);
+          }
+        }
+      } else if (role === 'R') {
+        const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+        for (const [dr, dc] of dirs) {
+          let nr = r + dr, nc = c + dc;
+          while (inBounds(nr, nc)) {
+            if (!bd[nr][nc]) {
+              moves.push({ r: nr, c: nc });
             } else {
-                pieceStyleMode = 'BOTH';
-                document.getElementById('langLabel').textContent = 'Chữ: VIỆT + HÁN';
+              if (bd[nr][nc].color !== color) moves.push({ r: nr, c: nc });
+              break;
             }
-            playSound('select');
-            drawBoard();
+            nr += dr; nc += dc;
+          }
         }
-
-        // Standard starting square roles (determines how a face-down piece moves on its first move!)
-        function getSquareRole(r, c) {
-            if ((r === 0 || r === 9)) {
-                if (c === 0 || c === 8) return 'R';
-                if (c === 1 || c === 7) return 'H';
-                if (c === 2 || c === 6) return 'E';
-                if (c === 3 || c === 5) return 'A';
-                if (c === 4) return 'K';
-            }
-            if ((r === 2 || r === 7) && (c === 1 || c === 7)) return 'C';
-            if ((r === 3 || r === 6) && (c % 2 === 0)) return 'P';
-            return 'P';
-        }
-
-        /**************************************************************
-         * 3. GAME STATE & INITIALIZATION
-         **************************************************************/
-        let board = [];
-        let turn = RED;
-        let selectedSq = null;
-        let validMoves = [];
-        let moveHistory = [];
-        let lastMove = null;
-        let hintMove = null;
-        let difficulty = 1; // 1: Rất Dễ, 2: Dễ, 3: Vừa, 4: Khó
-        let gameOver = false;
-        let aiThinking = false;
-        let capturedByRed = [];
-        let capturedByBlack = [];
-
-        function shuffleArray(arr) {
-            const copy = [...arr];
-            for (let i = copy.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [copy[i], copy[j]] = [copy[j], copy[i]];
-            }
-            return copy;
-        }
-
-        function startNewGame() {
-            document.getElementById('gameModal').classList.add('hidden');
-            document.getElementById('floatingAlert').classList.add('hidden');
-
-            // Create 10x9 empty board
-            board = Array.from({ length: 10 }, () => Array(9).fill(null));
-
-            // 15 non-General pieces for each side
-            const poolTemplate = [
-                'R', 'R',
-                'H', 'H',
-                'E', 'E',
-                'A', 'A',
-                'C', 'C',
-                'P', 'P', 'P', 'P', 'P'
-            ];
-
-            const redPool = shuffleArray(poolTemplate);
-            const blackPool = shuffleArray(poolTemplate);
-
-            // Place Generals face-up
-            board[0][4] = { color: BLACK, trueType: 'K', isHidden: false, startRole: 'K' };
-            board[9][4] = { color: RED,   trueType: 'K', isHidden: false, startRole: 'K' };
-
-            // Starting coordinates for the 15 hidden pieces of each side
-            const blackCoords = [
-                [0,0],[0,1],[0,2],[0,3],[0,5],[0,6],[0,7],[0,8],
-                [2,1],[2,7],
-                [3,0],[3,2],[3,4],[3,6],[3,8]
-            ];
-            const redCoords = [
-                [9,0],[9,1],[9,2],[9,3],[9,5],[9,6],[9,7],[9,8],
-                [7,1],[7,7],
-                [6,0],[6,2],[6,4],[6,6],[6,8]
-            ];
-
-            blackCoords.forEach(([r, c], idx) => {
-                board[r][c] = {
-                    color: BLACK,
-                    trueType: blackPool[idx],
-                    isHidden: true,
-                    startRole: getSquareRole(r, c)
-                };
-            });
-
-            redCoords.forEach(([r, c], idx) => {
-                board[r][c] = {
-                    color: RED,
-                    trueType: redPool[idx],
-                    isHidden: true,
-                    startRole: getSquareRole(r, c)
-                };
-            });
-
-            turn = RED;
-            selectedSq = null;
-            validMoves = [];
-            moveHistory = [];
-            lastMove = null;
-            hintMove = null;
-            gameOver = false;
-            aiThinking = false;
-            capturedByRed = [];
-            capturedByBlack = [];
-
-            updateUI();
-            drawBoard();
-            playSound('move');
-        }
-
-        function setDifficulty(level) {
-            difficulty = level;
-            const descriptions = {
-                1: { text: 'Máy nhường, dễ thắng', cls: 'bg-green-800 text-green-200' },
-                2: { text: 'Chơi thư giãn nhẹ nhàng', cls: 'bg-sky-800 text-sky-200' },
-                3: { text: 'Máy biết tính toán vừa phải', cls: 'bg-amber-800 text-amber-200' },
-                4: { text: 'Máy đánh kỹ, thử thách cao', cls: 'bg-red-900 text-red-200' }
-            };
-
-            for (let i = 1; i <= 4; i++) {
-                const btn = document.getElementById(`diff-${i}`);
-                if (i === level) {
-                    btn.className = 'diff-btn elder-btn py-2 px-1 rounded-xl font-extrabold text-sm sm:text-base bg-green-600 text-white ring-4 ring-yellow-300';
-                } else {
-                    btn.className = 'diff-btn elder-btn py-2 px-1 rounded-xl font-extrabold text-sm sm:text-base bg-[#593a22] text-amber-200';
-                }
-            }
-
-            const descEl = document.getElementById('diffDesc');
-            descEl.textContent = descriptions[level].text;
-            descEl.className = `text-xs sm:text-sm font-bold px-2.5 py-0.5 rounded-full ${descriptions[level].cls}`;
-            playSound('select');
-        }
-
-        /**************************************************************
-         * 4. MOVE GENERATION FOR CỜ TƯỚNG ÚP
-         **************************************************************/
-        function inBounds(r, c) {
-            return r >= 0 && r < 10 && c >= 0 && c < 9;
-        }
-
-        function inPalace(r, c, color) {
-            if (c < 3 || c > 5) return false;
-            return color === RED ? (r >= 7 && r <= 9) : (r >= 0 && r <= 2);
-        }
-
-        // Active movement role: if hidden, use startRole; if revealed, use trueType
-        function getActiveType(piece) {
-            return piece.isHidden ? piece.startRole : piece.trueType;
-        }
-
-        function getPseudoLegalMoves(b, r, c) {
-            const p = b[r][c];
-            if (!p) return [];
-            const moves = [];
-            const type = getActiveType(p);
-            const color = p.color;
-
-            const addIfValid = (nr, nc) => {
-                if (!inBounds(nr, nc)) return false;
-                const target = b[nr][nc];
-                if (!target) {
-                    moves.push({ r: nr, c: nc });
-                    return true; // continue sliding
-                } else if (target.color !== color) {
-                    moves.push({ r: nr, c: nc });
-                    return false; // stop sliding
-                }
-                return false; // blocked by own piece
-            };
-
-            if (type === 'K') {
-                const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
-                for (const [dr, dc] of dirs) {
-                    const nr = r + dr, nc = c + dc;
-                    if (inPalace(nr, nc, color)) {
-                        const t = b[nr][nc];
-                        if (!t || t.color !== color) moves.push({ r: nr, c: nc });
-                    }
-                }
-            } else if (type === 'A') {
-                // In Vietnamese Cờ Úp:
-                // - Hidden Advisor on starting square moves 1 step diagonally inside palace
-                // - Revealed Advisor (Sĩ) can move 1 step diagonally ANYWHERE on the board!
-                const dirs = [[-1,-1],[-1,1],[1,-1],[1,1]];
-                for (const [dr, dc] of dirs) {
-                    const nr = r + dr, nc = c + dc;
-                    if (!inBounds(nr, nc)) continue;
-                    if (p.isHidden && !inPalace(nr, nc, color)) continue;
-                    const t = b[nr][nc];
-                    if (!t || t.color !== color) moves.push({ r: nr, c: nc });
-                }
-            } else if (type === 'E') {
-                // In Vietnamese Cờ Úp:
-                // Elephant moves 2 steps diagonally if eye is empty, and CAN cross river when revealed!
-                const dirs = [[-2,-2],[-2,2],[2,-2],[2,2]];
-                for (const [dr, dc] of dirs) {
-                    const nr = r + dr, nc = c + dc;
-                    const er = r + dr/2, ec = c + dc/2;
-                    if (inBounds(nr, nc) && !b[er][ec]) {
-                        const t = b[nr][nc];
-                        if (!t || t.color !== color) moves.push({ r: nr, c: nc });
-                    }
-                }
-            } else if (type === 'H') {
-                const jumps = [
-                    [-2,-1, -1,0], [-2,1, -1,0],
-                    [2,-1, 1,0],   [2,1, 1,0],
-                    [-1,-2, 0,-1], [1,-2, 0,-1],
-                    [-1,2, 0,1],   [1,2, 0,1]
-                ];
-                for (const [dr, dc, lr, lc] of jumps) {
-                    const nr = r + dr, nc = c + dc;
-                    if (inBounds(nr, nc) && !b[r + lr][c + lc]) {
-                        const t = b[nr][nc];
-                        if (!t || t.color !== color) moves.push({ r: nr, c: nc });
-                    }
-                }
-            } else if (type === 'R') {
-                const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
-                for (const [dr, dc] of dirs) {
-                    let nr = r + dr, nc = c + dc;
-                    while (inBounds(nr, nc)) {
-                        if (!addIfValid(nr, nc)) break;
-                        nr += dr; nc += dc;
-                    }
-                }
-            } else if (type === 'C') {
-                const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
-                for (const [dr, dc] of dirs) {
-                    let nr = r + dr, nc = c + dc;
-                    let jumped = false;
-                    while (inBounds(nr, nc)) {
-                        const t = b[nr][nc];
-                        if (!jumped) {
-                            if (!t) moves.push({ r: nr, c: nc });
-                            else jumped = true;
-                        } else {
-                            if (t) {
-                                if (t.color !== color) moves.push({ r: nr, c: nc });
-                                break;
-                            }
-                        }
-                        nr += dr; nc += dc;
-                    }
-                }
-            } else if (type === 'P') {
-                const forward = color === RED ? -1 : 1;
-                const crossedRiver = color === RED ? (r <= 4) : (r >= 5);
-
-                // Forward step
-                const fr = r + forward;
-                if (inBounds(fr, c)) {
-                    const t = b[fr][c];
-                    if (!t || t.color !== color) moves.push({ r: fr, c });
-                }
-                // Sideways if crossed river
-                if (crossedRiver) {
-                    for (const dc of [-1, 1]) {
-                        const sc = c + dc;
-                        if (inBounds(r, sc)) {
-                            const t = b[r][sc];
-                            if (!t || t.color !== color) moves.push({ r, c: sc });
-                        }
-                    }
-                }
-            }
-
-            return moves;
-        }
-
-        function findKing(b, color) {
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 9; c++) {
-                    const p = b[r][c];
-                    if (p && p.color === color && p.trueType === 'K') {
-                        return { r, c };
-                    }
-                }
-            }
-            return null;
-        }
-
-        function kingsFacing(b) {
-            const rk = findKing(b, RED);
-            const bk = findKing(b, BLACK);
-            if (!rk || !bk || rk.c !== bk.c) return false;
-            for (let r = bk.r + 1; r < rk.r; r++) {
-                if (b[r][rk.c]) return false;
-            }
-            return true;
-        }
-
-        function isInCheck(b, color) {
-            const kingPos = findKing(b, color);
-            if (!kingPos) return true;
-            if (kingsFacing(b)) return true;
-
-            const oppColor = color === RED ? BLACK : RED;
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 9; c++) {
-                    const p = b[r][c];
-                    if (p && p.color === oppColor) {
-                        const moves = getPseudoLegalMoves(b, r, c);
-                        if (moves.some(m => m.r === kingPos.r && m.c === kingPos.c)) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-
-        function cloneBoard(b) {
-            return b.map(row => row.map(cell => cell ? { ...cell } : null));
-        }
-
-        function getLegalMovesForPiece(b, r, c) {
-            const p = b[r][c];
-            if (!p) return [];
-            const pseudo = getPseudoLegalMoves(b, r, c);
-            const legal = [];
-
-            for (const m of pseudo) {
-                const nextB = cloneBoard(b);
-                const moving = nextB[r][c];
-                moving.isHidden = false; // reveals after moving
-                nextB[m.r][m.c] = moving;
-                nextB[r][c] = null;
-
-                if (!isInCheck(nextB, p.color)) {
-                    legal.push(m);
-                }
-            }
-            return legal;
-        }
-
-        function getAllLegalMoves(b, color) {
-            const all = [];
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 9; c++) {
-                    const p = b[r][c];
-                    if (p && p.color === color) {
-                        const moves = getLegalMovesForPiece(b, r, c);
-                        for (const m of moves) {
-                            all.push({ fromR: r, fromC: c, toR: m.r, toC: m.c });
-                        }
-                    }
-                }
-            }
-            return all;
-        }
-
-        /**************************************************************
-         * 5. EXECUTING MOVES & UNDO HISTORY
-         **************************************************************/
-        function executeMove(fromR, fromC, toR, toC) {
-            // Save snapshot for Undo
-            moveHistory.push({
-                board: cloneBoard(board),
-                turn,
-                lastMove: lastMove ? { ...lastMove } : null,
-                capturedByRed: [...capturedByRed],
-                capturedByBlack: [...capturedByBlack]
-            });
-
-            const movingPiece = board[fromR][fromC];
-            const targetPiece = board[toR][toC];
-            const wasHidden = movingPiece.isHidden;
-
-            // If a piece moves for the first time, flip it face-up!
-            movingPiece.isHidden = false;
-
-            if (targetPiece) {
-                if (movingPiece.color === RED) {
-                    capturedByRed.push({ ...targetPiece, wasHiddenTarget: targetPiece.isHidden });
-                } else {
-                    capturedByBlack.push({ ...targetPiece, wasHiddenTarget: targetPiece.isHidden });
-                }
-            }
-
-            board[toR][toC] = movingPiece;
-            board[fromR][fromC] = null;
-
-            lastMove = {
-                fromR, fromC, toR, toC,
-                flipped: wasHidden,
-                revealedName: PIECE_INFO[movingPiece.trueType].vn
-            };
-            selectedSq = null;
-            validMoves = [];
-            hintMove = null;
-
-            const nextColor = turn === RED ? BLACK : RED;
-            turn = nextColor;
-
-            // Sound & Check Verification
-            const inCheckNow = isInCheck(board, turn);
-            const remainingMoves = getAllLegalMoves(board, turn);
-
-            if (remainingMoves.length === 0) {
-                gameOver = true;
-                playSound('win');
-                updateUI();
-                drawBoard();
-                showEndModal(movingPiece.color);
-                return;
-            }
-
-            if (inCheckNow) {
-                playSound('check');
-                showFloatingBanner('⚠️ CHIẾU TƯỚNG!');
-            } else if (targetPiece) {
-                playSound('capture');
-                if (wasHidden) {
-                    showFloatingBanner(`Lật ra: ${PIECE_INFO[movingPiece.trueType].vn}!`, 1400);
-                }
-            } else if (wasHidden) {
-                playSound('flip');
-                showFloatingBanner(`Lật ra: ${PIECE_INFO[movingPiece.trueType].vn}!`, 1300);
+      } else if (role === 'C') {
+        const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+        for (const [dr, dc] of dirs) {
+          let nr = r + dr, nc = c + dc;
+          let jumped = false;
+          while (inBounds(nr, nc)) {
+            if (!jumped) {
+              if (!bd[nr][nc]) {
+                moves.push({ r: nr, c: nc });
+              } else {
+                jumped = true;
+              }
             } else {
-                playSound('move');
+              if (bd[nr][nc]) {
+                if (bd[nr][nc].color !== color) moves.push({ r: nr, c: nc });
+                break;
+              }
             }
-
-            updateUI();
-            drawBoard();
-
-            if (!gameOver && turn === BLACK) {
-                aiThinking = true;
-                updateUI();
-                setTimeout(makeAIMove, 480);
-            }
+            nr += dr; nc += dc;
+          }
         }
-
-        function showFloatingBanner(text, duration = 2200) {
-            const banner = document.getElementById('floatingAlert');
-            banner.textContent = text;
-            banner.classList.remove('hidden');
-            clearTimeout(banner._timer);
-            banner._timer = setTimeout(() => {
-                if (!isInCheck(board, turn)) {
-                    banner.classList.add('hidden');
-                } else {
-                    banner.textContent = '⚠️ CHIẾU TƯỚNG!';
-                }
-            }, duration);
+      } else if (role === 'P') {
+        const forward = color === 'r' ? -1 : 1;
+        addMove(r + forward, c);
+        const crossedRiver = color === 'r' ? r <= 4 : r >= 5;
+        if (crossedRiver) {
+          addMove(r, c - 1);
+          addMove(r, c + 1);
         }
+      }
 
-        function undoMove() {
-            if (moveHistory.length === 0 || aiThinking) return;
+      return moves;
+    }
 
-            // Revert back to player's turn (usually 2 plies if AI already moved, or 1 ply if player lost/won)
-            let state = moveHistory.pop();
-            if (state.turn === BLACK && moveHistory.length > 0) {
-                state = moveHistory.pop();
-            }
+    function cloneBoard(bd) {
+      return bd.map(row => row.map(cell => cell ? { ...cell } : null));
+    }
 
-            board = state.board;
-            turn = state.turn;
-            lastMove = state.lastMove;
-            capturedByRed = state.capturedByRed;
-            capturedByBlack = state.capturedByBlack;
-            selectedSq = null;
-            validMoves = [];
-            hintMove = null;
-            gameOver = false;
-
-            document.getElementById('floatingAlert').classList.add('hidden');
-            playSound('select');
-            updateUI();
-            drawBoard();
+    function findKing(bd, color) {
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const p = bd[r][c];
+          if (p && p.color === color && !p.isHidden && p.trueType === 'K') {
+            return { r, c };
+          }
         }
+      }
+      return null;
+    }
 
-        function closeModalAndUndo() {
-            document.getElementById('gameModal').classList.add('hidden');
-            undoMove();
+    function kingsFacing(bd) {
+      const rk = findKing(bd, 'r');
+      const bk = findKing(bd, 'b');
+      if (!rk || !bk || rk.c !== bk.c) return false;
+      for (let r = bk.r + 1; r < rk.r; r++) {
+        if (bd[r][rk.c]) return false;
+      }
+      return true;
+    }
+
+    function isKingInCheck(bd, color) {
+      if (kingsFacing(bd)) return true;
+      const king = findKing(bd, color);
+      if (!king) return true;
+      const enemy = color === 'r' ? 'b' : 'r';
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const p = bd[r][c];
+          if (p && p.color === enemy) {
+            const mvs = getPseudoMoves(bd, r, c);
+            if (mvs.some(m => m.r === king.r && m.c === king.c)) return true;
+          }
         }
+      }
+      return false;
+    }
 
-        /**************************************************************
-         * 6. MULTI-LEVEL AI ENGINE (From "Very Easy/Fun" to "Hard")
-         **************************************************************/
-        function evaluateBoard(b) {
-            let score = 0;
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 9; c++) {
-                    const p = b[r][c];
-                    if (!p) continue;
-                    // Hidden piece has expected average value (~340) + bonus for active square role
-                    let val = p.isHidden
-                        ? (330 + PIECE_INFO[p.startRole].val * 0.25)
-                        : PIECE_INFO[p.trueType].val;
-
-                    // Advancement bonus for soldiers
-                    if (!p.isHidden && p.trueType === 'P') {
-                        if (p.color === RED && r <= 4) val += 70;
-                        if (p.color === BLACK && r >= 5) val += 70;
-                    }
-                    // Center control bonus
-                    if (c >= 3 && c <= 5) val += 12;
-
-                    score += (p.color === BLACK ? val : -val);
-                }
-            }
-            return score;
+    function getLegalMoves(bd, r, c) {
+      const p = bd[r][c];
+      if (!p) return [];
+      const pseudo = getPseudoMoves(bd, r, c);
+      const legal = [];
+      for (const m of pseudo) {
+        const nextBd = cloneBoard(bd);
+        const moving = nextBd[r][c];
+        nextBd[m.r][m.c] = moving;
+        nextBd[r][c] = null;
+        if (moving.isHidden) moving.isHidden = false;
+        if (!isKingInCheck(nextBd, p.color)) {
+          legal.push(m);
         }
+      }
+      return legal;
+    }
 
-        function simulateMoveForAI(b, move) {
-            const nextB = cloneBoard(b);
-            const p = nextB[move.fromR][move.fromC];
-            // IMPORTANT FAIRNESS: AI does NOT peek at hidden pieces when planning!
-            // If a piece is hidden during AI search, treat its revealed type as an average piece ('H')
-            if (p.isHidden) {
-                p.isHidden = false;
+    function getAllLegalMoves(bd, color) {
+      const all = [];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const p = bd[r][c];
+          if (p && p.color === color) {
+            const mvs = getLegalMoves(bd, r, c);
+            for (const m of mvs) {
+              all.push({ fromR: r, fromC: c, toR: m.r, toC: m.c });
             }
-            nextB[move.toR][move.toC] = p;
-            nextB[move.fromR][move.fromC] = null;
-            return nextB;
+          }
         }
-
-        function minimax(b, depth, alpha, beta, maximizingPlayer) {
-            if (depth === 0) return evaluateBoard(b);
-
-            const color = maximizingPlayer ? BLACK : RED;
-            const moves = getAllLegalMoves(b, color);
-            if (moves.length === 0) {
-                return maximizingPlayer ? -99999 : 99999;
-            }
-
-            // Sort captures first for faster pruning
-            moves.sort((a, m2) => (b[m2.toR][m2.toC] ? 1 : 0) - (b[a.toR][a.toC] ? 1 : 0));
-
-            if (maximizingPlayer) {
-                let maxEval = -Infinity;
-                for (const m of moves) {
-                    const nextB = simulateMoveForAI(b, m);
-                    const ev = minimax(nextB, depth - 1, alpha, beta, false);
-                    maxEval = Math.max(maxEval, ev);
-                    alpha = Math.max(alpha, ev);
-                    if (beta <= alpha) break;
-                }
-                return maxEval;
-            } else {
-                let minEval = Infinity;
-                for (const m of moves) {
-                    const nextB = simulateMoveForAI(b, m);
-                    const ev = minimax(nextB, depth - 1, alpha, beta, true);
-                    minEval = Math.min(minEval, ev);
-                    beta = Math.min(beta, ev);
-                    if (beta <= alpha) break;
-                }
-                return minEval;
-            }
-        }
-
-        function makeAIMove() {
-            if (gameOver || turn !== BLACK) {
-                aiThinking = false;
-                return;
-            }
-
-            const allMoves = getAllLegalMoves(board, BLACK);
-            if (allMoves.length === 0) {
-                aiThinking = false;
-                return;
-            }
-
-            let chosenMove = allMoves[0];
-
-            if (difficulty === 1) {
-                // LEVEL 1: "Rất Dễ (Chơi vui dễ thắng)"
-                // AI prefers flipping hidden pieces or harmless moves, and avoids capturing player's big pieces
-                const gentleMoves = allMoves.filter(m => {
-                    const target = board[m.toR][m.toC];
-                    if (!target) return true;
-                    // Avoid eating player's Chariot, Cannon, Horse if there are non-capture moves
-                    return !['R', 'C', 'H'].includes(target.trueType);
-                });
-                const pool = gentleMoves.length > 0 ? gentleMoves : allMoves;
-                chosenMove = pool[Math.floor(Math.random() * pool.length)];
-            } else if (difficulty === 2) {
-                // LEVEL 2: "Dễ" - 1-ply lookahead with slight randomness
-                let bestScore = -Infinity;
-                const scored = allMoves.map(m => {
-                    const nextB = simulateMoveForAI(board, m);
-                    const s = evaluateBoard(nextB) + (Math.random() * 65 - 32);
-                    if (s > bestScore) bestScore = s;
-                    return { m, s };
-                });
-                scored.sort((a, b) => b.s - a.s);
-                chosenMove = scored[0].m;
-            } else if (difficulty === 3) {
-                // LEVEL 3: "Vừa" - 2-ply Minimax
-                let bestScore = -Infinity;
-                const shuffled = shuffleArray(allMoves);
-                for (const m of shuffled) {
-                    const nextB = simulateMoveForAI(board, m);
-                    const s = minimax(nextB, 1, -Infinity, Infinity, false);
-                    if (s > bestScore) {
-                        bestScore = s;
-                        chosenMove = m;
-                    }
-                }
-            } else {
-                // LEVEL 4: "Khó" - 3-ply Alpha-Beta
-                let bestScore = -Infinity;
-                const sorted = shuffleArray(allMoves).sort((a, b) => (board[b.toR][b.toC] ? 1 : 0) - (board[a.toR][a.toC] ? 1 : 0));
-                for (const m of sorted) {
-                    const nextB = simulateMoveForAI(board, m);
-                    const s = minimax(nextB, 2, -Infinity, Infinity, false);
-                    if (s > bestScore) {
-                        bestScore = s;
-                        chosenMove = m;
-                    }
-                }
-            }
-
-            aiThinking = false;
-            executeMove(chosenMove.fromR, chosenMove.fromC, chosenMove.toR, chosenMove.toC);
-        }
-
-        function giveHint() {
-            if (gameOver || turn !== RED || aiThinking) return;
-            const moves = getAllLegalMoves(board, RED);
-            if (moves.length === 0) return;
-
-            let bestMove = moves[0];
-            let bestScore = Infinity; // RED minimizes BLACK's score
-            for (const m of moves) {
-                const nextB = simulateMoveForAI(board, m);
-                const s = minimax(nextB, 1, -Infinity, Infinity, true);
-                if (s < bestScore) {
-                    bestScore = s;
-                    bestMove = m;
-                }
-            }
-
-            selectedSq = { r: bestMove.fromR, c: bestMove.fromC };
-            validMoves = getLegalMovesForPiece(board, bestMove.fromR, bestMove.fromC);
-            hintMove = bestMove;
-            playSound('select');
-            showFloatingBanner('💡 Đã khoanh sáng nước đi gợi ý!', 1800);
-            drawBoard();
-        }
-
-        /**************************************************************
-         * 7. HIGH-CONTRAST CANVAS RENDERING (ELDERLY-FRIENDLY)
-         **************************************************************/
-        const canvas = document.getElementById('chessCanvas');
-        const ctx = canvas.getContext('2d');
-        let cellSize = 60;
-        let padX = 36;
-        let padY = 36;
-
-        function resizeCanvas() {
-            const isLandscape = window.innerWidth >= 1024;
-            const availW = isLandscape ? (window.innerWidth - 430) : (window.innerWidth - 24);
-            const availH = isLandscape ? (window.innerHeight - 36) : (window.innerHeight - 300);
-
-            // Board aspect ratio is 9 columns wide by 10 rows high
-            const maxCellByW = Math.floor(availW / 9.35);
-            const maxCellByH = Math.floor(Math.max(380, availH) / 10.35);
-
-            cellSize = Math.max(36, Math.min(72, Math.min(maxCellByW, maxCellByH)));
-            padX = Math.round(cellSize * 0.62);
-            padY = Math.round(cellSize * 0.62);
-
-            const cssW = cellSize * 8 + padX * 2;
-            const cssH = cellSize * 9 + padY * 2;
-
-            const dpr = window.devicePixelRatio || 1;
-            canvas.width = cssW * dpr;
-            canvas.height = cssH * dpr;
-            canvas.style.width = `${cssW}px`;
-            canvas.style.height = `${cssH}px`;
-
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            drawBoard();
-        }
-
-        window.addEventListener('resize', resizeCanvas);
-
-        function getXY(r, c) {
-            return {
-                x: padX + c * cellSize,
-                y: padY + r * cellSize
-            };
-        }
-
-        function drawCornerMarker(x, y, size, gap, left, right) {
-            ctx.strokeStyle = '#3d1e05';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            if (left) {
-                ctx.moveTo(x - gap - size, y - gap);
-                ctx.lineTo(x - gap, y - gap);
-                ctx.lineTo(x - gap, y - gap - size);
-
-                ctx.moveTo(x - gap - size, y + gap);
-                ctx.lineTo(x - gap, y + gap);
-                ctx.lineTo(x - gap, y + gap + size);
-            }
-            if (right) {
-                ctx.moveTo(x + gap + size, y - gap);
-                ctx.lineTo(x + gap, y - gap);
-                ctx.lineTo(x + gap, y - gap - size);
-
-                ctx.moveTo(x + gap + size, y + gap);
-                ctx.lineTo(x + gap, y + gap);
-                ctx.lineTo(x + gap, y + gap + size);
-            }
-            ctx.stroke();
-        }
-
-        function drawBoard() {
-            const w = cellSize * 8 + padX * 2;
-            const h = cellSize * 9 + padY * 2;
-
-            // 1. Warm high-contrast parchment wood surface
-            ctx.fillStyle = '#f3cf98';
-            ctx.fillRect(0, 0, w, h);
-
-            // Outer thick decorative border
-            ctx.strokeStyle = '#2d1500';
-            ctx.lineWidth = 4.5;
-            ctx.strokeRect(padX - 6, padY - 6, cellSize * 8 + 12, cellSize * 9 + 12);
-
-            // 2. River area ("Sở Hà - Hán Giới")
-            ctx.fillStyle = '#e5b976';
-            ctx.fillRect(padX, padY + 4 * cellSize, cellSize * 8, cellSize);
-
-            // 3. Bold Grid Lines (Elderly high-visibility requirement)
-            ctx.strokeStyle = '#2a1302';
-            ctx.lineWidth = 2.8;
-
-            // Horizontal lines (10 rows)
-            for (let r = 0; r < 10; r++) {
-                ctx.beginPath();
-                ctx.moveTo(padX, padY + r * cellSize);
-                ctx.lineTo(padX + 8 * cellSize, padY + r * cellSize);
-                ctx.stroke();
-            }
-
-            // Vertical lines (split across river except outer edges)
-            for (let c = 0; c < 9; c++) {
-                const x = padX + c * cellSize;
-                if (c === 0 || c === 8) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, padY);
-                    ctx.lineTo(x, padY + 9 * cellSize);
-                    ctx.stroke();
-                } else {
-                    ctx.beginPath();
-                    ctx.moveTo(x, padY);
-                    ctx.lineTo(x, padY + 4 * cellSize);
-                    ctx.stroke();
-
-                    ctx.beginPath();
-                    ctx.moveTo(x, padY + 5 * cellSize);
-                    ctx.lineTo(x, padY + 9 * cellSize);
-                    ctx.stroke();
-                }
-            }
-
-            // 4. Palace Diagonal Lines (Cung Tướng)
-            ctx.save();
-            ctx.strokeStyle = '#4a2508';
-            ctx.lineWidth = 2.6;
-            // Top palace
-            ctx.beginPath();
-            ctx.moveTo(padX + 3 * cellSize, padY);
-            ctx.lineTo(padX + 5 * cellSize, padY + 2 * cellSize);
-            ctx.moveTo(padX + 5 * cellSize, padY);
-            ctx.lineTo(padX + 3 * cellSize, padY + 2 * cellSize);
-            // Bottom palace
-            ctx.moveTo(padX + 3 * cellSize, padY + 7 * cellSize);
-            ctx.lineTo(padX + 5 * cellSize, padY + 9 * cellSize);
-            ctx.moveTo(padX + 5 * cellSize, padY + 7 * cellSize);
-            ctx.lineTo(padX + 3 * cellSize, padY + 9 * cellSize);
-            ctx.stroke();
-            ctx.restore();
-
-            // 5. Cannon & Soldier position markers
-            const mSize = Math.max(5, cellSize * 0.14);
-            const mGap = Math.max(3, cellSize * 0.08);
-            const markerCoords = [
-                [2,1],[2,7],[7,1],[7,7],
-                [3,0],[3,2],[3,4],[3,6],[3,8],
-                [6,0],[6,2],[6,4],[6,6],[6,8]
-            ];
-            for (const [r, c] of markerCoords) {
-                const { x, y } = getXY(r, c);
-                drawCornerMarker(x, y, mSize, mGap, c > 0, c < 8);
-            }
-
-            // 6. River Text
-            ctx.save();
-            ctx.fillStyle = '#4a2508';
-            ctx.font = `800 ${Math.round(cellSize * 0.36)}px "Be Vietnam Pro", sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            const riverY = padY + 4.5 * cellSize;
-            ctx.fillText('SỞ HÀ', padX + 2 * cellSize, riverY);
-            ctx.fillText('HÁN GIỚI', padX + 6 * cellSize, riverY);
-            ctx.restore();
-
-            // 7. Highlight Last Move (From -> To)
-            if (lastMove) {
-                const fromPos = getXY(lastMove.fromR, lastMove.fromC);
-                const toPos = getXY(lastMove.toR, lastMove.toC);
-
-                // Dashed connecting line for clarity
-                ctx.save();
-                ctx.strokeStyle = 'rgba(21, 128, 61, 0.75)';
-                ctx.lineWidth = 4;
-                ctx.setLineDash([6, 4]);
-                ctx.beginPath();
-                ctx.moveTo(fromPos.x, fromPos.y);
-                ctx.lineTo(toPos.x, toPos.y);
-                ctx.stroke();
-                ctx.restore();
-
-                // Starting square dot
-                ctx.fillStyle = '#15803d';
-                ctx.beginPath();
-                ctx.arc(fromPos.x, fromPos.y, cellSize * 0.16, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Destination square glowing ring
-                ctx.strokeStyle = '#16a34a';
-                ctx.lineWidth = 5;
-                ctx.beginPath();
-                ctx.arc(toPos.x, toPos.y, cellSize * 0.49, 0, Math.PI * 2);
-                ctx.stroke();
-            }
-
-            // 8. Highlight Selected Square
-            if (selectedSq) {
-                const pos = getXY(selectedSq.r, selectedSq.c);
-                ctx.save();
-                ctx.strokeStyle = '#facc15';
-                ctx.lineWidth = 6;
-                ctx.shadowColor = '#eab308';
-                ctx.shadowBlur = 12;
-                ctx.beginPath();
-                ctx.arc(pos.x, pos.y, cellSize * 0.50, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.restore();
-            }
-
-            // 9. Draw All Chess Pieces (Extra-Large Radius for Elderly Eyes)
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 9; c++) {
-                    const p = board[r][c];
-                    if (p) {
-                        drawPiece(r, c, p);
-                    }
-                }
-            }
-
-            // 10. Draw Valid Move Targets on top so they are super easy to see
-            for (const m of validMoves) {
-                const pos = getXY(m.r, m.c);
-                const isCapture = board[m.r][m.c] !== null;
-                const isHintTarget = hintMove && hintMove.toR === m.r && hintMove.toC === m.c;
-
-                ctx.save();
-                if (isCapture) {
-                    // Big bright target ring around enemy piece
-                    ctx.strokeStyle = isHintTarget ? '#fde047' : '#22c55e';
-                    ctx.lineWidth = 5.5;
-                    ctx.beginPath();
-                    ctx.arc(pos.x, pos.y, cellSize * 0.48, 0, Math.PI * 2);
-                    ctx.stroke();
-                } else {
-                    // High-contrast bright green circle on empty intersection
-                    ctx.fillStyle = isHintTarget ? '#facc15' : '#16a34a';
-                    ctx.beginPath();
-                    ctx.arc(pos.x, pos.y, cellSize * 0.23, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 2.5;
-                    ctx.stroke();
-                }
-                ctx.restore();
-            }
-        }
-
-        function drawPiece(r, c, piece) {
-            const { x, y } = getXY(r, c);
-            const radius = cellSize * 0.455; // Maximized size without overlapping
-            const isRed = piece.color === RED;
-
-            ctx.save();
-
-            // Drop shadow for 3D tactile wooden piece look
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-            ctx.shadowBlur = 5;
-            ctx.shadowOffsetY = 3;
-
-            if (piece.isHidden) {
-                // === FACE-DOWN (ÚP) PIECE ===
-                // Rich jade/emerald for Red vs deep royal blue/slate for Black, or colored rims
-                const grad = ctx.createRadialGradient(x - radius*0.25, y - radius*0.25, radius*0.1, x, y, radius);
-                if (isRed) {
-                    grad.addColorStop(0, '#dc2626');
-                    grad.addColorStop(1, '#7f1d1d');
-                } else {
-                    grad.addColorStop(0, '#1e3a8a');
-                    grad.addColorStop(1, '#0f172a');
-                }
-
-                ctx.fillStyle = grad;
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Reset shadow for inner details
-                ctx.shadowColor = 'transparent';
-
-                // Thick gold/ivory rim
-                ctx.strokeStyle = isRed ? '#fde68a' : '#93c5fd';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.arc(x, y, radius * 0.84, 0, Math.PI * 2);
-                ctx.stroke();
-
-                // Show small hint of starting role so elderly players don't have to guess how the hidden square moves
-                const roleName = PIECE_INFO[piece.startRole].short;
-                ctx.fillStyle = '#ffffff';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.font = `900 ${Math.round(radius * 0.65)}px "Be Vietnam Pro", sans-serif`;
-                ctx.fillText('ÚP', x, y - radius * 0.16);
-
-                ctx.fillStyle = isRed ? '#fde047' : '#bae6fd';
-                ctx.font = `700 ${Math.round(radius * 0.40)}px "Be Vietnam Pro", sans-serif`;
-                ctx.fillText(`(${roleName})`, x, y + radius * 0.36);
-
-            } else {
-                // === FACE-UP (NGỬA) PIECE ===
-                // Bright ivory cream disk for maximum contrast
-                const grad = ctx.createRadialGradient(x - radius*0.2, y - radius*0.2, radius*0.1, x, y, radius);
-                grad.addColorStop(0, '#fffbeb');
-                grad.addColorStop(1, '#f3d9a4');
-
-                ctx.fillStyle = grad;
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Reset shadow
-                ctx.shadowColor = 'transparent';
-
-                // Outer edge & inner ring
-                const mainColor = isRed ? '#b91c1c' : '#0f172a';
-                ctx.strokeStyle = '#451a03';
-                ctx.lineWidth = 2.5;
-                ctx.stroke();
-
-                ctx.strokeStyle = mainColor;
-                ctx.lineWidth = 2.8;
-                ctx.beginPath();
-                ctx.arc(x, y, radius * 0.85, 0, Math.PI * 2);
-                ctx.stroke();
-
-                const info = PIECE_INFO[piece.trueType];
-                const hanChar = isRed ? info.rHan : info.bHan;
-                ctx.fillStyle = mainColor;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-
-                if (pieceStyleMode === 'VN') {
-                    // Extra-bold Vietnamese name
-                    const fontSize = info.vn.length >= 5 ? radius * 0.46 : radius * 0.58;
-                    ctx.font = `900 ${Math.round(fontSize)}px "Be Vietnam Pro", sans-serif`;
-                    ctx.fillText(info.vn, x, y + 1);
-                } else if (pieceStyleMode === 'HAN') {
-                    // Traditional Chinese Character
-                    ctx.font = `900 ${Math.round(radius * 1.05)}px "Noto Serif", serif`;
-                    ctx.fillText(hanChar, x, y + 2);
-                } else {
-                    // Dual mode: Big Chinese on top + Clear Bold Vietnamese underneath
-                    ctx.font = `900 ${Math.round(radius * 0.72)}px "Noto Serif", serif`;
-                    ctx.fillText(hanChar, x, y - radius * 0.20);
-
-                    const vnFontSize = info.vn.length >= 5 ? radius * 0.37 : radius * 0.42;
-                    ctx.font = `800 ${Math.round(vnFontSize)}px "Be Vietnam Pro", sans-serif`;
-                    ctx.fillText(info.vn, x, y + radius * 0.38);
-                }
-            }
-
-            ctx.restore();
-        }
-
-        /**************************************************************
-         * 8. TOUCH & CLICK INTERACTION
-         **************************************************************/
-        function handleBoardTap(clientX, clientY) {
-            if (gameOver || turn !== RED || aiThinking) return;
-
-            const rect = canvas.getBoundingClientRect();
-            const x = clientX - rect.left;
-            const y = clientY - rect.top;
-
-            // Find closest grid intersection
-            const c = Math.round((x - padX) / cellSize);
-            const r = Math.round((y - padY) / cellSize);
-
-            if (!inBounds(r, c)) return;
-
-            // Check distance to intersection (generous touch radius for elderly fingers)
-            const pos = getXY(r, c);
-            const dist = Math.hypot(x - pos.x, y - pos.y);
-            if (dist > cellSize * 0.58) return;
-
-            // If user tapped a valid destination square for the currently selected piece
-            const moveTarget = validMoves.find(m => m.r === r && m.c === c);
-            if (selectedSq && moveTarget) {
-                executeMove(selectedSq.r, selectedSq.c, r, c);
-                return;
-            }
-
-            // Otherwise, if user tapped one of their own RED pieces, select it
-            const clickedPiece = board[r][c];
-            if (clickedPiece && clickedPiece.color === RED) {
-                selectedSq = { r, c };
-                validMoves = getLegalMovesForPiece(board, r, c);
-                hintMove = null;
-                playSound('select');
-
-                const subEl = document.getElementById('subStatus');
-                if (clickedPiece.isHidden) {
-                    const roleVn = PIECE_INFO[clickedPiece.startRole].vn;
-                    subEl.textContent = `Đang chọn quân ÚP (đi nước đầu như ${roleVn})`;
-                } else {
-                    const trueVn = PIECE_INFO[clickedPiece.trueType].vn;
-                    subEl.textContent = `Đang chọn quân ${trueVn} — Chạm chấm xanh để đi`;
-                }
-                drawBoard();
-            } else {
-                selectedSq = null;
-                validMoves = [];
-                drawBoard();
-            }
-        }
-
-        canvas.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            handleBoardTap(e.clientX, e.clientY);
+      }
+      return all;
+    }
+
+    function makeMove(fromR, fromC, toR, toC) {
+      if (turn === 'r') {
+        historyStack.push({
+          board: cloneBoard(board),
+          capturedByRed: [...capturedByRed],
+          capturedByBlack: [...capturedByBlack],
+          lastMove: lastMove ? { ...lastMove } : null
         });
+      }
 
-        /**************************************************************
-         * 9. UI UPDATES & MODALS
-         **************************************************************/
-        function updateUI() {
-            const turnBadge = document.getElementById('turnBadge');
-            const subStatus = document.getElementById('subStatus');
-            const statusBox = document.getElementById('statusBox');
-            const btnUndo = document.getElementById('btnUndo');
+      const moving = board[fromR][fromC];
+      const target = board[toR][toC];
 
-            btnUndo.disabled = moveHistory.length === 0 || aiThinking;
+      if (target) {
+        const revealedTarget = { ...target, isHidden: false };
+        if (moving.color === 'r') capturedByRed.push(revealedTarget);
+        else capturedByBlack.push(revealedTarget);
+      }
 
-            if (turn === RED) {
-                statusBox.className = 'bg-[#23150b] border-2 border-red-500 rounded-xl p-2.5 text-center';
-                turnBadge.className = 'text-lg sm:text-xl font-extrabold text-red-400 flex items-center justify-center gap-2';
-                turnBadge.innerHTML = `<span class="inline-block w-4 h-4 rounded-full bg-red-500 animate-ping"></span><span>LƯỢT CỦA BẠN (QUÂN ĐỎ)</span>`;
-                if (lastMove && lastMove.flipped) {
-                    subStatus.textContent = `Nước trước lật ra quân ${lastMove.revealedName}! Mời bác đi tiếp.`;
-                } else {
-                    subStatus.textContent = 'Chạm vào quân cờ Đỏ để chọn nước đi';
-                }
-            } else {
-                statusBox.className = 'bg-[#23150b] border-2 border-sky-400 rounded-xl p-2.5 text-center';
-                turnBadge.className = 'text-lg sm:text-xl font-extrabold text-sky-300 flex items-center justify-center gap-2';
-                turnBadge.innerHTML = `<span class="inline-block w-4 h-4 rounded-full bg-sky-400 animate-pulse"></span><span>MÁY ĐANG SUY NGHĨ...</span>`;
-                subStatus.textContent = 'Xin chờ máy đi quân Đen trong giây lát';
-            }
+      board[toR][toC] = moving;
+      board[fromR][fromC] = null;
+      if (moving.isHidden) moving.isHidden = false;
 
-            // Count remaining face-down pieces
-            let rHid = 0, bHid = 0;
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 9; c++) {
-                    const p = board[r][c];
-                    if (p && p.isHidden) {
-                        if (p.color === RED) rHid++;
-                        else bHid++;
-                    }
-                }
-            }
-            document.getElementById('redHiddenCount').textContent = `Còn úp: ${rHid}`;
-            document.getElementById('blackHiddenCount').textContent = `Còn úp: ${bHid}`;
+      lastMove = { fromR, fromC, toR, toC };
+      selected = null;
+      validMoves = [];
 
-            // Render captured pieces badges
-            const renderCaptured = (list, containerId, badgeClass) => {
-                const el = document.getElementById(containerId);
-                if (list.length === 0) {
-                    el.innerHTML = `<span class="text-stone-400 text-xs">Chưa ăn quân nào</span>`;
-                    return;
-                }
-                el.innerHTML = list.map(p => {
-                    const label = PIECE_INFO[p.trueType].short;
-                    return `<span class="px-1.5 py-0.5 rounded-md text-xs font-extrabold ${badgeClass}">${label}</span>`;
-                }).join('');
-            };
+      const nextTurn = turn === 'r' ? 'b' : 'r';
+      turn = nextTurn;
 
-            renderCaptured(capturedByRed, 'redCapturedList', 'bg-red-900/90 text-amber-100 border border-red-600');
-            renderCaptured(capturedByBlack, 'blackCapturedList', 'bg-sky-900/90 text-sky-100 border border-sky-600');
+      const inCheck = isKingInCheck(board, turn);
+      if (inCheck) playTone('check');
+      else if (target) playTone('capture');
+      else playTone('move');
+
+      updateUI();
+      drawBoard();
+
+      const remainingMoves = getAllLegalMoves(board, turn);
+      if (remainingMoves.length === 0) {
+        gameOver = true;
+        if (turn === 'b') {
+          showEndModal('🏆', 'BẠN ĐÃ CHIẾN THẮNG!', 'Tuyệt vời! Bạn đã chiếu bí quân Đen.');
+        } else {
+          showEndModal('😊', 'VÁN CỜ KẾT THÚC', 'Quân Đen đã thắng ván này. Mời bạn bấm ĐI LẠI hoặc VÁN MỚI!');
+        }
+        return;
+      }
+
+      if (turn === 'b' && !gameOver) {
+        aiThinking = true;
+        updateUI();
+        setTimeout(makeAIMove, 400);
+      }
+    }
+
+    function evaluateBoard(bd) {
+      let score = 0;
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const p = bd[r][c];
+          if (!p) continue;
+          const val = p.isHidden ? 320 : PIECE_INFO[p.trueType].value;
+          score += p.color === 'b' ? val : -val;
+        }
+      }
+      return score;
+    }
+
+    function makeAIMove() {
+      if (gameOver || turn !== 'b') return;
+      const moves = getAllLegalMoves(board, 'b');
+      if (moves.length === 0) return;
+
+      let chosen = moves[0];
+
+      if (difficulty === 1) {
+        const nonCaptureKing = moves.filter(m => {
+          const t = board[m.toR][m.toC];
+          return !t || (t.trueType !== 'R' && t.trueType !== 'C');
+        });
+        const pool = nonCaptureKing.length > 0 && Math.random() < 0.75 ? nonCaptureKing : moves;
+        chosen = pool[Math.floor(Math.random() * pool.length)];
+      } else if (difficulty === 2) {
+        let bestScore = -Infinity;
+        for (const m of shuffle(moves)) {
+          const target = board[m.toR][m.toC];
+          let sc = target ? (target.isHidden ? 300 : PIECE_INFO[target.trueType].value) : 0;
+          sc += Math.random() * 140;
+          if (sc > bestScore) { bestScore = sc; chosen = m; }
+        }
+      } else {
+        const depth = difficulty === 3 ? 2 : 3;
+        let bestVal = -Infinity;
+        for (const m of shuffle(moves)) {
+          const nextBd = cloneBoard(board);
+          const mvP = nextBd[m.fromR][m.fromC];
+          nextBd[m.toR][m.toC] = mvP;
+          nextBd[m.fromR][m.fromC] = null;
+          if (mvP.isHidden) mvP.isHidden = false;
+          const val = minimax(nextBd, depth - 1, -Infinity, Infinity, false);
+          if (val > bestVal) {
+            bestVal = val;
+            chosen = m;
+          }
+        }
+      }
+
+      aiThinking = false;
+      makeMove(chosen.fromR, chosen.fromC, chosen.toR, chosen.toC);
+    }
+
+    function minimax(bd, depth, alpha, beta, isMax) {
+      if (depth === 0) return evaluateBoard(bd);
+      const color = isMax ? 'b' : 'r';
+      const moves = getAllLegalMoves(bd, color);
+      if (moves.length === 0) return isMax ? -99999 : 99999;
+
+      if (isMax) {
+        let maxEval = -Infinity;
+        for (const m of moves) {
+          const nextBd = cloneBoard(bd);
+          const mvP = nextBd[m.fromR][m.fromC];
+          nextBd[m.toR][m.toC] = mvP;
+          nextBd[m.fromR][m.fromC] = null;
+          if (mvP.isHidden) mvP.isHidden = false;
+          const ev = minimax(nextBd, depth - 1, alpha, beta, false);
+          maxEval = Math.max(maxEval, ev);
+          alpha = Math.max(alpha, ev);
+          if (beta <= alpha) break;
+        }
+        return maxEval;
+      } else {
+        let minEval = Infinity;
+        for (const m of moves) {
+          const nextBd = cloneBoard(bd);
+          const mvP = nextBd[m.fromR][m.fromC];
+          nextBd[m.toR][m.toC] = mvP;
+          nextBd[m.fromR][m.fromC] = null;
+          if (mvP.isHidden) mvP.isHidden = false;
+          const ev = minimax(nextBd, depth - 1, alpha, beta, true);
+          minEval = Math.min(minEval, ev);
+          beta = Math.min(beta, ev);
+          if (beta <= alpha) break;
+        }
+        return minEval;
+      }
+    }
+
+    function undoMove() {
+      if (historyStack.length === 0 || aiThinking) return;
+      const prev = historyStack.pop();
+      board = prev.board;
+      capturedByRed = prev.capturedByRed;
+      capturedByBlack = prev.capturedByBlack;
+      lastMove = prev.lastMove;
+      turn = 'r';
+      selected = null;
+      validMoves = [];
+      gameOver = false;
+      closeModal();
+      playTone('select');
+      updateUI();
+      drawBoard();
+    }
+
+    function updateUI() {
+      const statusText = document.getElementById('statusText');
+      const turnDot = document.getElementById('turnDot');
+      const checkAlert = document.getElementById('checkAlert');
+
+      if (turn === 'r') {
+        statusText.textContent = 'Lượt bạn (Quân Đỏ)';
+        statusText.className = 'text-base sm:text-2xl font-extrabold text-amber-300';
+        turnDot.className = 'w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-red-500 animate-pulse inline-block';
+      } else {
+        statusText.textContent = 'Máy đang suy nghĩ...';
+        statusText.className = 'text-base sm:text-2xl font-extrabold text-sky-300';
+        turnDot.className = 'w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-sky-400 animate-ping inline-block';
+      }
+
+      const inCheck = isKingInCheck(board, turn);
+      checkAlert.classList.toggle('hidden', !inCheck);
+
+      document.getElementById('undoBtn').disabled = historyStack.length === 0 || aiThinking;
+      document.getElementById('undoBadge').textContent = historyStack.length;
+
+      let redHidden = 0, blackHidden = 0;
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const p = board[r][c];
+          if (p && p.isHidden) {
+            if (p.color === 'r') redHidden++;
+            else blackHidden++;
+          }
+        }
+      }
+      document.getElementById('redHiddenCount').textContent = 'Đỏ úp: ' + redHidden;
+      document.getElementById('blackHiddenCount').textContent = 'Đen úp: ' + blackHidden;
+
+      document.getElementById('capturedByRed').innerHTML = capturedByRed
+        .map(p => `<span>${PIECE_INFO[p.trueType].hanBlack}</span>`).join('');
+      document.getElementById('capturedByBlack').innerHTML = capturedByBlack
+        .map(p => `<span>${PIECE_INFO[p.trueType].hanRed}</span>`).join('');
+    }
+
+    function drawCornerMark(cx, cy, c) {
+      const gap = Math.max(3, cellSize * 0.08);
+      const len = Math.max(7, cellSize * 0.2);
+      ctx.strokeStyle = '#5c2804';
+      ctx.lineWidth = Math.max(1.8, cellSize * 0.04);
+
+      const drawSide = (dx, dy) => {
+        ctx.beginPath();
+        ctx.moveTo(cx + dx * gap, cy + dy * (gap + len));
+        ctx.lineTo(cx + dx * gap, cy + dy * gap);
+        ctx.lineTo(cx + dx * (gap + len), cy + dy * gap);
+        ctx.stroke();
+      };
+      if (c > 0) { drawSide(-1, -1); drawSide(-1, 1); }
+      if (c < 8) { drawSide(1, -1); drawSide(1, 1); }
+    }
+
+    function drawBoard() {
+      const width = (COLS - 1) * cellSize + margin * 2;
+      const height = (ROWS - 1) * cellSize + margin * 2;
+
+      const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+      bgGrad.addColorStop(0, '#f6d592');
+      bgGrad.addColorStop(0.5, '#eab869');
+      bgGrad.addColorStop(1, '#dead58');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      const lineW = Math.max(2, cellSize * 0.045);
+      ctx.strokeStyle = '#451a03';
+      ctx.lineWidth = lineW * 1.6;
+      ctx.strokeRect(margin - 6, margin - 6, (COLS - 1) * cellSize + 12, (ROWS - 1) * cellSize + 12);
+
+      ctx.lineWidth = lineW;
+      for (let r = 0; r < ROWS; r++) {
+        const y = margin + r * cellSize;
+        ctx.beginPath();
+        ctx.moveTo(margin, y);
+        ctx.lineTo(margin + (COLS - 1) * cellSize, y);
+        ctx.stroke();
+      }
+
+      for (let c = 0; c < COLS; c++) {
+        const x = margin + c * cellSize;
+        if (c === 0 || c === COLS - 1) {
+          ctx.beginPath();
+          ctx.moveTo(x, margin);
+          ctx.lineTo(x, margin + (ROWS - 1) * cellSize);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(x, margin);
+          ctx.lineTo(x, margin + 4 * cellSize);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(x, margin + 5 * cellSize);
+          ctx.lineTo(x, margin + 9 * cellSize);
+          ctx.stroke();
+        }
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(margin + 3 * cellSize, margin);
+      ctx.lineTo(margin + 5 * cellSize, margin + 2 * cellSize);
+      ctx.moveTo(margin + 5 * cellSize, margin);
+      ctx.lineTo(margin + 3 * cellSize, margin + 2 * cellSize);
+      ctx.moveTo(margin + 3 * cellSize, margin + 7 * cellSize);
+      ctx.lineTo(margin + 5 * cellSize, margin + 9 * cellSize);
+      ctx.moveTo(margin + 5 * cellSize, margin + 7 * cellSize);
+      ctx.lineTo(margin + 3 * cellSize, margin + 9 * cellSize);
+      ctx.stroke();
+
+      const markCoords = [
+        [2,1],[2,7],[7,1],[7,7],
+        [3,0],[3,2],[3,4],[3,6],[3,8],
+        [6,0],[6,2],[6,4],[6,6],[6,8]
+      ];
+      for (const [mr, mc] of markCoords) {
+        drawCornerMark(margin + mc * cellSize, margin + mr * cellSize, mc);
+      }
+
+      ctx.save();
+      ctx.fillStyle = '#5c2804';
+      ctx.font = `900 ${Math.round(cellSize * 0.48)}px "KaiTi", "STKaiti", serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const riverY = margin + 4.5 * cellSize;
+      ctx.fillText('楚 河', margin + 2 * cellSize, riverY);
+      ctx.fillText('漢 界', margin + 6 * cellSize, riverY);
+      ctx.restore();
+
+      if (lastMove) {
+        const fx = margin + lastMove.fromC * cellSize;
+        const fy = margin + lastMove.fromR * cellSize;
+        const tx = margin + lastMove.toC * cellSize;
+        const ty = margin + lastMove.toR * cellSize;
+
+        ctx.save();
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = Math.max(3, cellSize * 0.07);
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.arc(fx, fy, cellSize * 0.24, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.save();
+        ctx.strokeStyle = '#16a34a';
+        ctx.lineWidth = Math.max(4, cellSize * 0.09);
+        ctx.beginPath();
+        ctx.arc(tx, ty, cellSize * 0.48, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const p = board[r][c];
+          if (p) drawPiece(r, c, p);
+        }
+      }
+
+      for (const m of validMoves) {
+        const mx = margin + m.c * cellSize;
+        const my = margin + m.r * cellSize;
+        const hasTarget = board[m.r][m.c] !== null;
+
+        ctx.save();
+        if (hasTarget) {
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = Math.max(4, cellSize * 0.09);
+          ctx.beginPath();
+          ctx.arc(mx, my, cellSize * 0.47, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = 'rgba(22, 163, 74, 0.85)';
+          ctx.beginPath();
+          ctx.arc(mx, my, cellSize * 0.19, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+
+    function drawPiece(r, c, piece) {
+      const x = margin + c * cellSize;
+      const y = margin + r * cellSize;
+      const radius = cellSize * 0.455;
+      const isSelected = selected && selected.r === r && selected.c === c;
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = isSelected ? 14 : 6;
+      ctx.shadowOffsetY = isSelected ? 6 : 3;
+
+      if (piece.isHidden) {
+        const grad = ctx.createRadialGradient(
+          x - radius * 0.28, y - radius * 0.28, radius * 0.08,
+          x, y, radius
+        );
+        if (piece.color === 'r') {
+          grad.addColorStop(0, '#ea580c');
+          grad.addColorStop(0.55, '#b45309');
+          grad.addColorStop(1, '#7c2d12');
+          ctx.fillStyle = grad;
+          ctx.strokeStyle = '#fde68a';
+        } else {
+          grad.addColorStop(0, '#64748b');
+          grad.addColorStop(0.6, '#334155');
+          grad.addColorStop(1, '#0f172a');
+          ctx.fillStyle = grad;
+          ctx.strokeStyle = '#cbd5e1';
         }
 
-        function showEndModal(winnerColor) {
-            const modal = document.getElementById('gameModal');
-            const icon = document.getElementById('modalIcon');
-            const title = document.getElementById('modalTitle');
-            const msg = document.getElementById('modalMsg');
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = Math.max(2.5, cellSize * 0.055);
+        ctx.stroke();
+      } else {
+        const grad = ctx.createRadialGradient(
+          x - radius * 0.25, y - radius * 0.25, radius * 0.1,
+          x, y, radius
+        );
+        grad.addColorStop(0, '#fffef8');
+        grad.addColorStop(0.75, '#fef3c7');
+        grad.addColorStop(1, '#d97706');
 
-            if (winnerColor === RED) {
-                icon.textContent = '🏆';
-                title.textContent = 'CHÚC MỪNG CHIẾN THẮNG!';
-                title.className = 'text-2xl sm:text-3xl font-black text-yellow-300 mb-2';
-                msg.textContent = 'Bác đánh hay quá! Tướng Đen của máy đã hết đường chạy.';
-            } else {
-                icon.textContent = '🍵';
-                title.textContent = 'VÁN CỜ KẾT THÚC';
-                title.className = 'text-2xl sm:text-3xl font-black text-amber-300 mb-2';
-                msg.textContent = 'Máy đã thắng ván này. Bác có thể bấm "Đi Lại" để sửa nước vừa rồi hoặc chơi ván mới nhé!';
-            }
-            modal.classList.remove('hidden');
-        }
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
 
-        function confirmNewGame() {
-            if (moveHistory.length === 0 || gameOver) {
-                startNewGame();
-            } else {
-                toggleConfirmModal(true);
-            }
-        }
+        ctx.lineWidth = Math.max(2.5, cellSize * 0.055);
+        ctx.strokeStyle = piece.color === 'r' ? '#b91c1c' : '#1e293b';
+        ctx.stroke();
 
-        function toggleConfirmModal(show) {
-            document.getElementById('confirmModal').classList.toggle('hidden', !show);
-        }
+        ctx.shadowColor = 'transparent';
+        const info = PIECE_INFO[piece.trueType];
+        const hanChar = piece.color === 'r' ? info.hanRed : info.hanBlack;
+        ctx.fillStyle = piece.color === 'r' ? '#dc2626' : '#0f172a';
+        const fontSize = Math.round(radius * 1.38);
+        ctx.font = `900 ${fontSize}px "KaiTi", "STKaiti", "PMingLiU", "Noto Serif SC", serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(hanChar, x, y + radius * 0.04);
+      }
 
-        function toggleHelpModal(show) {
-            document.getElementById('helpModal').classList.toggle('hidden', !show);
-        }
+      if (isSelected) {
+        ctx.shadowColor = 'transparent';
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = Math.max(4, cellSize * 0.09);
+        ctx.beginPath();
+        ctx.arc(x, y, radius + 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
-        // Start game on load
-        window.onload = function() {
-            resizeCanvas();
-            startNewGame();
-        };
-    </script>
+      ctx.restore();
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      if (gameOver || aiThinking || turn !== 'r') return;
+      const rect = canvas.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+
+      const c = Math.round((px - margin) / cellSize);
+      const r = Math.round((py - margin) / cellSize);
+      if (!inBounds(r, c)) return;
+
+      const moveTarget = validMoves.find(m => m.r === r && m.c === c);
+      if (selected && moveTarget) {
+        makeMove(selected.r, selected.c, r, c);
+        return;
+      }
+
+      const clicked = board[r][c];
+      if (clicked && clicked.color === 'r') {
+        selected = { r, c };
+        validMoves = getLegalMoves(board, r, c);
+        playTone('select');
+        drawBoard();
+      } else {
+        selected = null;
+        validMoves = [];
+        drawBoard();
+      }
+    });
+
+    function showEndModal(icon, title, msg) {
+      document.getElementById('modalIcon').textContent = icon;
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalMsg').textContent = msg;
+      document.getElementById('modalButtons').innerHTML = `
+        <button onclick="undoMove()" class="px-5 py-3 rounded-xl bg-amber-500 text-stone-950 font-black text-xl">↩️ Đi lại</button>
+        <button onclick="initGame()" class="px-5 py-3 rounded-xl bg-red-600 text-white font-black text-xl">🔄 Ván mới</button>
+      `;
+      const overlay = document.getElementById('modalOverlay');
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+    }
+
+    function confirmNewGame() {
+      if (historyStack.length === 0 || gameOver) {
+        initGame();
+        return;
+      }
+      document.getElementById('modalIcon').textContent = '🔄';
+      document.getElementById('modalTitle').textContent = 'CHƠI VÁN MỚI?';
+      document.getElementById('modalMsg').textContent = 'Bạn có muốn xếp lại bàn cờ để bắt đầu ván mới không?';
+      document.getElementById('modalButtons').innerHTML = `
+        <button onclick="closeModal()" class="px-6 py-3 rounded-xl bg-stone-600 text-white font-bold text-xl">Không</button>
+        <button onclick="initGame()" class="px-6 py-3 rounded-xl bg-red-600 text-white font-black text-xl">Có, chơi mới</button>
+      `;
+      const overlay = document.getElementById('modalOverlay');
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+    }
+
+    function closeModal() {
+      const overlay = document.getElementById('modalOverlay');
+      overlay.classList.add('hidden');
+      overlay.classList.remove('flex');
+    }
+
+    initGame();
+  </script>
 </body>
 </html>
