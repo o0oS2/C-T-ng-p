@@ -116,9 +116,18 @@
             </button>
         </div>
 
+        <!-- MODE SWITCH: Đánh với máy / Đánh 2 người -->
+        <div class="grid grid-cols-2 gap-1.5 sm:gap-2 w-full">
+            <button id="mode-ai" onclick="setMode('ai')" class="tactile-btn py-1.5 sm:py-2 px-1 rounded-xl font-bold text-[clamp(0.9rem,2.2vw,1.3rem)]">🤖 Đánh với máy</button>
+            <button id="mode-pvp" onclick="setMode('pvp')" class="tactile-btn py-1.5 sm:py-2 px-1 rounded-xl font-bold text-[clamp(0.9rem,2.2vw,1.3rem)]">👥 Đánh 2 người</button>
+        </div>
+
         <!-- 2. STATUS BAR: Single Clear Line -->
         <div id="statusBar" class="w-full bg-[#26160b] border-2 border-amber-600/80 rounded-xl py-1.5 sm:py-2 px-3 min-h-[2.6rem] sm:min-h-[3.3rem] flex items-center justify-between gap-2 shadow-inner">
-            <div id="turnText" class="font-extrabold text-[clamp(1rem,2.3vw,1.4rem)] flex items-center gap-2"></div>
+            <div id="turnText" class="font-extrabold text-[clamp(1rem,2.3vw,1.4rem)] text-red-400 flex items-center gap-2">
+                <span class="w-3.5 h-3.5 rounded-full bg-red-500 inline-block animate-pulse"></span>
+                <span>Lượt của bạn (ĐỎ)</span>
+            </div>
             <div id="checkBadge" class="hidden bg-red-600 text-white font-black px-2.5 py-0.5 rounded-lg text-[clamp(0.85rem,2vw,1.25rem)] animate-bounce">
                 ⚠️ CHIẾU TƯỚNG!
             </div>
@@ -182,15 +191,15 @@
     <!-- MODAL: Confirm New Game -->
     <div id="confirmModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
         <div class="bg-[#362214] border-4 border-amber-400 rounded-2xl max-w-md w-full p-6 text-center shadow-2xl">
-            <h2 class="text-2xl font-black text-amber-300 mb-2">CHƠI VÁN MỚI?</h2>
-            <p class="text-lg text-amber-100 font-semibold mb-6">
+            <h2 id="confirmTitle" class="text-2xl font-black text-amber-300 mb-2">CHƠI VÁN MỚI?</h2>
+            <p id="confirmDesc" class="text-lg text-amber-100 font-semibold mb-6">
                 Xếp lại bàn cờ và bắt đầu ván mới từ đầu?
             </p>
             <div class="grid grid-cols-2 gap-3">
                 <button onclick="closeConfirmModal()" class="tactile-btn bg-stone-600 text-white font-bold py-3 px-4 rounded-xl text-lg">
                     Hủy
                 </button>
-                <button onclick="closeConfirmModal(); startNewGame();" class="tactile-btn bg-red-600 text-white font-black py-3 px-4 rounded-xl text-lg">
+                <button onclick="confirmYes()" class="tactile-btn bg-red-600 text-white font-black py-3 px-4 rounded-xl text-lg">
                     Đồng Ý
                 </button>
             </div>
@@ -331,6 +340,7 @@
         let historyStack = [];
         let lastMove = null;
         let difficulty = 1;
+        let mode = 'ai'; // 'ai' = đánh với máy, 'pvp' = 2 người
         let gameOver = false;
         let aiBusy = false;
         let capturedByRed = [];
@@ -340,6 +350,7 @@
             try {
                 localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify({
                     difficulty,
+                    mode,
                     soundOn
                 }));
             } catch (e) {}
@@ -353,11 +364,14 @@
                 if ([1, 2, 3, 4].includes(data.difficulty)) {
                     difficulty = data.difficulty;
                 }
+                if (data.mode === 'ai' || data.mode === 'pvp') {
+                    mode = data.mode;
+                }
                 if (typeof data.soundOn === 'boolean') {
                     soundOn = data.soundOn;
                 }
             } catch (e) {}
-            applyDifficultyUI(difficulty);
+            applyModeUI();
             document.getElementById('soundIcon').textContent = soundOn ? '🔊' : '🔇';
         }
 
@@ -376,6 +390,7 @@
             try {
                 const state = {
                     v: 2,
+                    mode,
                     board,
                     turn,
                     historyStack: historyStack.slice(-200),
@@ -421,6 +436,10 @@
                 selected = null;
                 validMoves = [];
                 aiBusy = false;
+                if (state.mode === 'ai' || state.mode === 'pvp') {
+                    mode = state.mode;
+                    applyModeUI();
+                }
 
                 updateStatusUI();
                 drawBoard();
@@ -431,7 +450,7 @@
                 } else {
                     if (historyStack.length > 0) showToast('Đã mở lại ván đang chơi dở');
                     // Nếu thoát đúng lúc đến lượt máy thì máy đi tiếp
-                    if (turn === BLACK) {
+                    if (mode === 'ai' && turn === BLACK) {
                         aiBusy = true;
                         updateStatusUI();
                         setTimeout(makeAIMove, 450);
@@ -519,6 +538,34 @@
                 } else {
                     btn.className = 'tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]';
                 }
+                if (mode === 'pvp') btn.classList.add('opacity-40', 'pointer-events-none');
+            }
+        }
+
+        function applyModeUI() {
+            const on = 'tactile-btn py-1.5 sm:py-2 px-1 rounded-xl font-black text-[clamp(0.9rem,2.2vw,1.3rem)] bg-amber-500 text-stone-950 ring-2 ring-amber-200';
+            const off = 'tactile-btn py-1.5 sm:py-2 px-1 rounded-xl font-bold text-[clamp(0.9rem,2.2vw,1.3rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]';
+            document.getElementById('mode-ai').className = mode === 'ai' ? on : off;
+            document.getElementById('mode-pvp').className = mode === 'pvp' ? on : off;
+            applyDifficultyUI(difficulty);
+        }
+
+        function setMode(m) {
+            if (m === mode) return;
+            const doSwitch = () => {
+                mode = m;
+                saveSettings();
+                applyModeUI();
+                startNewGame();
+            };
+            if (historyStack.length > 0 && !gameOver) {
+                askConfirm(
+                    'ĐỔI CHẾ ĐỘ?',
+                    m === 'pvp' ? 'Chuyển sang đánh 2 người và bắt đầu ván mới?' : 'Chuyển sang đánh với máy và bắt đầu ván mới?',
+                    doSwitch
+                );
+            } else {
+                doSwitch();
             }
         }
 
@@ -762,7 +809,7 @@
             drawBoard();
             if (moving.color === BLACK) startPulse();
 
-            if (!gameOver && turn === BLACK) {
+            if (!gameOver && mode === 'ai' && turn === BLACK) {
                 aiBusy = true;
                 updateStatusUI();
                 setTimeout(makeAIMove, 420);
@@ -772,7 +819,7 @@
         function undoMove() {
             if (historyStack.length === 0 || aiBusy) return;
             let snap = historyStack.pop();
-            if (snap.turn === BLACK && historyStack.length > 0) {
+            if (mode === 'ai' && snap.turn === BLACK && historyStack.length > 0) {
                 snap = historyStack.pop();
             }
             board = snap.board;
@@ -984,16 +1031,16 @@
                 // Ô máy vừa rời đi + ô máy vừa đến
                 ctx.fillStyle = 'rgba(37, 99, 235, 0.30)';
                 ctx.strokeStyle = MACHINE_BLUE;
-                ctx.lineWidth = 3.5;
+                ctx.lineWidth = 3;
                 ctx.setLineDash([7, 5]);
                 ctx.beginPath();
-                ctx.arc(f.x, f.y, cellSize * 0.46, 0, Math.PI * 2);
+                ctx.arc(f.x, f.y, cellSize * 0.40, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
                 ctx.setLineDash([]);
                 ctx.fillStyle = 'rgba(37, 99, 235, 0.40)';
                 ctx.beginPath();
-                ctx.arc(t.x, t.y, cellSize * 0.57, 0, Math.PI * 2);
+                ctx.arc(t.x, t.y, cellSize * 0.53, 0, Math.PI * 2);
                 ctx.fill();
             } else {
                 ctx.strokeStyle = 'rgba(21, 128, 61, 0.75)';
@@ -1007,13 +1054,13 @@
 
                 ctx.fillStyle = '#15803d';
                 ctx.beginPath();
-                ctx.arc(f.x, f.y, cellSize * 0.15, 0, Math.PI * 2);
+                ctx.arc(f.x, f.y, cellSize * 0.12, 0, Math.PI * 2);
                 ctx.fill();
 
                 ctx.strokeStyle = '#16a34a';
-                ctx.lineWidth = 5;
+                ctx.lineWidth = 4;
                 ctx.beginPath();
-                ctx.arc(t.x, t.y, cellSize * 0.49, 0, Math.PI * 2);
+                ctx.arc(t.x, t.y, cellSize * 0.48, 0, Math.PI * 2);
                 ctx.stroke();
             }
             ctx.restore();
@@ -1030,11 +1077,11 @@
             const px = -uy, py = ux;
 
             const tipD = dist - cellSize * 0.53;            // mũi tên dừng ngay ngoài quân vừa đến
-            const head = Math.min(cellSize * 0.30, tipD * 0.6);
-            const halfW = cellSize * 0.19;
+            const head = Math.min(cellSize * 0.24, tipD * 0.6);
+            const halfW = cellSize * 0.15;
             const bx = f.x + ux * (tipD - head), by = f.y + uy * (tipD - head);
             const tx = f.x + ux * tipD, ty = f.y + uy * tipD;
-            const shaft = Math.max(4, cellSize * 0.09);
+            const shaft = Math.max(3, cellSize * 0.07);
 
             ctx.save();
             ctx.lineCap = 'round';
@@ -1043,12 +1090,12 @@
             // Viền trắng để nổi trên mọi nền
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
             ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.lineWidth = shaft + 5;
+            ctx.lineWidth = shaft + 4;
             ctx.beginPath();
             ctx.moveTo(f.x, f.y);
             ctx.lineTo(bx, by);
             ctx.stroke();
-            ctx.lineWidth = 5;
+            ctx.lineWidth = 4;
             ctx.beginPath();
             ctx.moveTo(tx, ty);
             ctx.lineTo(bx + px * halfW, by + py * halfW);
@@ -1075,20 +1122,20 @@
             // Chấm xuất phát
             ctx.fillStyle = MACHINE_BLUE;
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
-            ctx.arc(f.x, f.y, cellSize * 0.11, 0, Math.PI * 2);
+            ctx.arc(f.x, f.y, cellSize * 0.09, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
 
             // Vòng quanh quân vừa đến
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 9;
+            ctx.lineWidth = 7;
             ctx.beginPath();
             ctx.arc(t.x, t.y, cellSize * 0.5, 0, Math.PI * 2);
             ctx.stroke();
             ctx.strokeStyle = MACHINE_BLUE;
-            ctx.lineWidth = 5.5;
+            ctx.lineWidth = 4.5;
             ctx.beginPath();
             ctx.arc(t.x, t.y, cellSize * 0.5, 0, Math.PI * 2);
             ctx.stroke();
@@ -1099,9 +1146,9 @@
                 const k = (elapsed % 750) / 750;
                 ctx.globalAlpha = 0.85 * (1 - k);
                 ctx.strokeStyle = MACHINE_BLUE;
-                ctx.lineWidth = 4;
+                ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.arc(t.x, t.y, cellSize * (0.5 + 0.4 * k), 0, Math.PI * 2);
+                ctx.arc(t.x, t.y, cellSize * (0.5 + 0.3 * k), 0, Math.PI * 2);
                 ctx.stroke();
             }
             ctx.restore();
@@ -1362,7 +1409,7 @@
          * ============================================================= */
         canvas.addEventListener('pointerdown', (e) => {
             e.preventDefault();
-            if (gameOver || turn !== RED || aiBusy) return;
+            if (gameOver || aiBusy || (mode === 'ai' && turn !== RED)) return;
 
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -1382,7 +1429,7 @@
             }
 
             const clicked = board[r][c];
-            if (clicked && clicked.color === RED) {
+            if (clicked && clicked.color === turn) {
                 selected = { r, c };
                 validMoves = getLegalMoves(board, r, c);
                 playTone('select');
@@ -1401,11 +1448,20 @@
 
             btnUndo.disabled = historyStack.length === 0 || aiBusy;
 
-            if (turn === RED) {
-                // Lượt người chơi (ĐỎ): không hiển thị chữ nào
-                turnText.innerHTML = '';
+            const base = 'font-extrabold text-[clamp(1rem,2.3vw,1.4rem)] flex items-center gap-2 ';
+            if (mode === 'pvp') {
+                if (turn === RED) {
+                    turnText.className = base + 'text-red-400';
+                    turnText.innerHTML = `<span class="w-3.5 h-3.5 rounded-full bg-red-500 inline-block animate-pulse"></span><span>Lượt quân ĐỎ</span>`;
+                } else {
+                    turnText.className = base + 'text-slate-300';
+                    turnText.innerHTML = `<span class="w-3.5 h-3.5 rounded-full bg-slate-400 inline-block animate-pulse"></span><span>Lượt quân ĐEN</span>`;
+                }
+            } else if (turn === RED) {
+                turnText.className = base + 'text-red-400';
+                turnText.innerHTML = `<span class="w-3.5 h-3.5 rounded-full bg-red-500 inline-block animate-pulse"></span><span>Lượt của bạn (ĐỎ)</span>`;
             } else {
-                turnText.className = 'font-extrabold text-[clamp(1rem,2.3vw,1.4rem)] text-slate-300 flex items-center gap-2';
+                turnText.className = base + 'text-slate-300';
                 turnText.innerHTML = `<span class="w-3.5 h-3.5 rounded-full bg-slate-400 inline-block animate-ping"></span><span>Máy đang suy nghĩ...</span>`;
             }
 
@@ -1437,7 +1493,11 @@
             const title = document.getElementById('modalTitle');
             const desc = document.getElementById('modalDesc');
 
-            if (winner === RED) {
+            if (mode === 'pvp') {
+                icon.textContent = '🏆';
+                title.textContent = winner === RED ? 'ĐỎ THẮNG!' : 'ĐEN THẮNG!';
+                desc.textContent = winner === RED ? 'Bên quân Đỏ đã thắng ván cờ này!' : 'Bên quân Đen đã thắng ván cờ này!';
+            } else if (winner === RED) {
                 icon.textContent = '🏆';
                 title.textContent = 'CHIẾN THẮNG!';
                 desc.textContent = 'Chúc mừng bác đã thắng ván cờ này!';
@@ -1454,12 +1514,28 @@
             undoMove();
         }
 
+        let pendingConfirm = null;
+
+        function askConfirm(title, desc, action) {
+            pendingConfirm = action;
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmDesc').textContent = desc;
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        function confirmYes() {
+            const act = pendingConfirm || startNewGame;
+            closeConfirmModal();
+            act();
+        }
+
         function openConfirmModal() {
             if (historyStack.length === 0 || gameOver) startNewGame();
-            else document.getElementById('confirmModal').classList.remove('hidden');
+            else askConfirm('CHƠI VÁN MỚI?', 'Xếp lại bàn cờ và bắt đầu ván mới từ đầu?', startNewGame);
         }
 
         function closeConfirmModal() {
+            pendingConfirm = null;
             document.getElementById('confirmModal').classList.add('hidden');
         }
 
