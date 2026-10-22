@@ -83,7 +83,7 @@
             flex-shrink: 0;
         }
 
-        #redCapturedList, #blackCapturedList { min-height: calc(var(--cell, 40px) * 0.744 + 8px); align-content: flex-start; }
+        #redCapturedList, #blackCapturedList { min-height: calc(var(--cell, 40px) * 0.744 + 2px); align-content: flex-start; }
 
         .mini-piece-red {
             border: 2.4px solid #991b1b;
@@ -113,8 +113,8 @@
     </div>
 
     <!-- Quân ĐỎ bị máy (ĐEN) ăn: hiện phía trên bàn, bên ĐEN -->
-    <div id="trayTop" class="w-full bg-[#2b1a0e] border-2 border-slate-600/80 rounded-xl p-1.5 shrink-0">
-        <div id="blackCapturedList" class="flex flex-wrap items-center gap-1 w-full"></div>
+    <div id="trayTop" class="w-full bg-[#f2ce94] border-2 border-[#54320e] rounded-xl p-1 shrink-0">
+        <div id="blackCapturedList" class="flex flex-wrap items-center gap-0 w-full"></div>
     </div>
 
     <!-- 3. THE BOARD: Strictly 1 Canvas Inside 1 Frame -->
@@ -125,8 +125,8 @@
     </div>
 
     <!-- Quân ĐEN bị bạn (ĐỎ) ăn: hiện phía dưới bàn, bên ĐỎ -->
-    <div id="trayBottom" class="w-full bg-[#2b1a0e] border-2 border-[#8a4a22] rounded-xl p-1.5 shrink-0">
-        <div id="redCapturedList" class="flex flex-wrap items-center gap-1 w-full"></div>
+    <div id="trayBottom" class="w-full bg-[#f2ce94] border-2 border-[#54320e] rounded-xl p-1 shrink-0">
+        <div id="redCapturedList" class="flex flex-wrap items-center gap-0 w-full"></div>
     </div>
 
     <!-- 4. ACTION BUTTONS ROW -->
@@ -1531,7 +1531,7 @@
                 cv.height = Math.round(size * dpr);
                 cv.style.width = size + 'px';
                 cv.style.height = size + 'px';
-                cv.style.margin = '-2px';
+                cv.style.margin = '-5px';
                 const c2 = cv.getContext('2d');
                 c2.setTransform(dpr, 0, 0, dpr, 0, 0);
                 // Quân bị ăn luôn hiện mặt ngửa
