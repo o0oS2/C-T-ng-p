@@ -68,31 +68,31 @@
 
         /* Miniature 3D Chess Piece Tokens for Captured Tray */
         .mini-piece {
-            width: calc(var(--cell, 40px) * 0.93);
-            height: calc(var(--cell, 40px) * 0.93);
+            width: calc(var(--cell, 40px) * 0.744);
+            height: calc(var(--cell, 40px) * 0.744);
             border-radius: 9999px;
-            background: radial-gradient(circle at 32% 28%, #fffef8 0%, #fef3c7 65%, #e5b869 100%);
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.65), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+            background: radial-gradient(circle at 38% 38%, #fffef8 0%, #f3d79b 100%);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.55);
             display: inline-flex;
             align-items: center;
             justify-content: center;
             font-family: "Noto Serif", "KaiTi", "STKaiti", serif;
             font-weight: 900;
-            font-size: calc(var(--cell, 40px) * 0.63);
+            font-size: calc(var(--cell, 40px) * 0.5);
             line-height: 1;
             flex-shrink: 0;
         }
 
-        #redCapturedList, #blackCapturedList { min-height: calc(var(--cell, 40px) * 0.93); align-content: flex-start; }
+        #redCapturedList, #blackCapturedList { min-height: calc(var(--cell, 40px) * 0.744); align-content: flex-start; }
 
         .mini-piece-red {
-            border: 3px solid #991b1b;
+            border: 2.4px solid #991b1b;
             color: #b91c1c;
         }
 
         .mini-piece-black {
-            border: 3px solid #1e293b;
-            color: #0f172a;
+            border: 2.4px solid #1e293b;
+            color: #111827;
         }
     </style>
 </head>
@@ -112,6 +112,11 @@
         </div>
     </div>
 
+    <!-- Quân ĐỎ bị máy (ĐEN) ăn: hiện phía trên bàn, bên ĐEN -->
+    <div id="trayTop" class="w-full bg-[#2b1a0e] border-2 border-slate-600/80 rounded-xl p-1.5 shrink-0">
+        <div id="blackCapturedList" class="flex flex-wrap items-center gap-1 w-full"></div>
+    </div>
+
     <!-- 3. THE BOARD: Strictly 1 Canvas Inside 1 Frame -->
     <div class="w-full flex items-center justify-center">
         <div id="boardFrame" class="wood-board-frame p-1.5 sm:p-2.5 flex items-center justify-center">
@@ -119,7 +124,12 @@
         </div>
     </div>
 
-    <!-- 4. ACTION BUTTONS ROW: Strictly 1 Undo & 1 New Game -->
+    <!-- Quân ĐEN bị bạn (ĐỎ) ăn: hiện phía dưới bàn, bên ĐỎ -->
+    <div id="trayBottom" class="w-full bg-[#2b1a0e] border-2 border-[#8a4a22] rounded-xl p-1.5 shrink-0">
+        <div id="redCapturedList" class="flex flex-wrap items-center gap-1 w-full"></div>
+    </div>
+
+    <!-- 4. ACTION BUTTONS ROW -->
     <div id="actionBar" class="w-full grid grid-cols-3 gap-2 shrink-0">
         <button id="btnUndo" onclick="undoMove()" disabled class="tactile-btn bg-amber-500 hover:bg-amber-400 text-stone-950 font-black py-2.5 sm:py-3 px-1 rounded-xl text-[clamp(0.9rem,2.1vw,1.3rem)] flex items-center justify-center gap-1.5 shadow-md">
             <span>↩️</span>
@@ -133,19 +143,6 @@
             <span>⚙️</span>
             <span>CÀI ĐẶT</span>
         </button>
-    </div>
-
-    <!-- 5. BOTTOM CAPTURED PIECES BAR: Full-Width Visual 3D Piece Tokens Only -->
-    <div id="bottomBar" class="w-full bg-[#2b1a0e] border-2 border-[#6e4423] rounded-xl p-1.5 sm:p-2 grid grid-cols-1 gap-1.5 shrink-0">
-        <!-- Left Box: Black Pieces Captured by Red -->
-        <div class="bg-[#1c1008] rounded-lg p-1.5 sm:p-2 border border-orange-900/70 flex items-center w-full">
-            <div id="redCapturedList" class="flex flex-wrap items-center gap-1 sm:gap-1.5 w-full"></div>
-        </div>
-
-        <!-- Right Box: Red Pieces Captured by Black -->
-        <div class="bg-[#1c1008] rounded-lg p-1.5 sm:p-2 border border-slate-700/70 flex items-center w-full">
-            <div id="blackCapturedList" class="flex flex-wrap items-center gap-1 sm:gap-1.5 w-full"></div>
-        </div>
     </div>
 
     <!-- TOAST -->
@@ -988,13 +985,14 @@
 
             const topBar = document.getElementById('topBar');
             const actionBar = document.getElementById('actionBar');
-            const bottomBar = document.getElementById('bottomBar');
+            const trayTop = document.getElementById('trayTop');
+            const trayBottom = document.getElementById('trayBottom');
 
             // 2) Tính lại vài lượt vì chiều cao các thanh phụ thuộc cỡ quân bị ăn (theo cỡ ô)
             for (let i = 0; i < 3; i++) {
                 const availW = window.innerWidth - bodyX - frameX;
-                const availH = window.innerHeight - bodyY - frameY - gap * 3
-                    - topBar.offsetHeight - actionBar.offsetHeight - bottomBar.offsetHeight;
+                const availH = window.innerHeight - bodyY - frameY - gap * 4
+                    - topBar.offsetHeight - trayTop.offsetHeight - trayBottom.offsetHeight - actionBar.offsetHeight;
 
                 const byW = availW / 9.24;   // bàn rộng = 8 ô + 2 lề (0.62 ô)
                 const byH = availH / 10.24;  // bàn cao = 9 ô + 2 lề
@@ -1005,7 +1003,7 @@
                 document.documentElement.style.setProperty('--cell', cellSize + 'px');
 
                 const frameW = cellSize * 8 + padX * 2 + frameX;
-                [topBar, actionBar, bottomBar].forEach(el => { el.style.maxWidth = `${frameW}px`; });
+                [topBar, trayTop, trayBottom, actionBar].forEach(el => { el.style.maxWidth = `${frameW}px`; });
             }
 
             const cssW = cellSize * 8 + padX * 2;
