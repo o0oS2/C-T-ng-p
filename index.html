@@ -68,8 +68,8 @@
 
         /* Miniature 3D Chess Piece Tokens for Captured Tray */
         .mini-piece {
-            width: clamp(1.85rem, 4.2vw, 2.55rem);
-            height: clamp(1.85rem, 4.2vw, 2.55rem);
+            width: calc(var(--cell, 40px) * 0.5);
+            height: calc(var(--cell, 40px) * 0.5);
             border-radius: 9999px;
             background: radial-gradient(circle at 32% 28%, #fffef8 0%, #fef3c7 65%, #e5b869 100%);
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.65), inset 0 1px 2px rgba(255, 255, 255, 0.8);
@@ -78,10 +78,12 @@
             justify-content: center;
             font-family: "Noto Serif", "KaiTi", "STKaiti", serif;
             font-weight: 900;
-            font-size: clamp(1.15rem, 2.7vw, 1.65rem);
+            font-size: calc(var(--cell, 40px) * 0.34);
             line-height: 1;
             flex-shrink: 0;
         }
+
+        #redCapturedList, #blackCapturedList { min-height: calc(var(--cell, 40px) * 1.04); align-content: flex-start; }
 
         .mini-piece-red {
             border: 2.5px solid #991b1b;
@@ -98,30 +100,6 @@
 
     <!-- 1. TOP CONTROL BAR: 4 Large Difficulty Buttons + Sound Toggle -->
     <div id="topBar" class="w-full flex flex-col gap-1.5 shrink-0">
-        <div class="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-1.5 sm:gap-2 w-full">
-            <button id="diff-1" onclick="setDifficulty(1)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-black text-[clamp(0.95rem,2.4vw,1.45rem)] bg-amber-500 text-stone-950 ring-2 ring-amber-200">
-                Rất Dễ
-            </button>
-            <button id="diff-2" onclick="setDifficulty(2)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">
-                Dễ
-            </button>
-            <button id="diff-3" onclick="setDifficulty(3)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">
-                Vừa
-            </button>
-            <button id="diff-4" onclick="setDifficulty(4)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">
-                Khó
-            </button>
-            <button id="btnSound" onclick="toggleSound()" aria-label="Âm thanh" class="tactile-btn px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-black text-[clamp(1.1rem,2.5vw,1.5rem)] bg-[#4a2e19] text-amber-100 border border-[#784b2a] flex items-center justify-center">
-                <span id="soundIcon">🔊</span>
-            </button>
-        </div>
-
-        <!-- MODE SWITCH: Đánh với máy / Đánh 2 người -->
-        <div class="grid grid-cols-2 gap-1.5 sm:gap-2 w-full">
-            <button id="mode-ai" onclick="setMode('ai')" class="tactile-btn py-1.5 sm:py-2 px-1 rounded-xl font-bold text-[clamp(0.9rem,2.2vw,1.3rem)]">🤖 Đánh với máy</button>
-            <button id="mode-pvp" onclick="setMode('pvp')" class="tactile-btn py-1.5 sm:py-2 px-1 rounded-xl font-bold text-[clamp(0.9rem,2.2vw,1.3rem)]">👥 Đánh 2 người</button>
-        </div>
-
         <!-- 2. STATUS BAR: Single Clear Line -->
         <div id="statusBar" class="w-full bg-[#26160b] border-2 border-amber-600/80 rounded-xl py-1.5 sm:py-2 px-3 min-h-[2.6rem] sm:min-h-[3.3rem] flex items-center justify-between gap-2 shadow-inner">
             <div id="turnText" class="font-extrabold text-[clamp(1rem,2.3vw,1.4rem)] text-red-400 flex items-center gap-2">
@@ -142,14 +120,17 @@
     </div>
 
     <!-- 4. ACTION BUTTONS ROW: Strictly 1 Undo & 1 New Game -->
-    <div id="actionBar" class="w-full grid grid-cols-2 gap-2.5 sm:gap-4 shrink-0">
-        <button id="btnUndo" onclick="undoMove()" disabled class="tactile-btn bg-amber-500 hover:bg-amber-400 text-stone-950 font-black py-2.5 sm:py-3.5 px-4 rounded-xl text-[clamp(1.1rem,2.6vw,1.65rem)] flex items-center justify-center gap-2 shadow-md">
+    <div id="actionBar" class="w-full grid grid-cols-[1fr_1fr_auto] gap-2 sm:gap-3 shrink-0">
+        <button id="btnUndo" onclick="undoMove()" disabled class="tactile-btn bg-amber-500 hover:bg-amber-400 text-stone-950 font-black py-2.5 sm:py-3.5 px-2 rounded-xl text-[clamp(1rem,2.5vw,1.5rem)] flex items-center justify-center gap-1.5 shadow-md">
             <span>↩️</span>
             <span>ĐI LẠI</span>
         </button>
-        <button onclick="openConfirmModal()" class="tactile-btn bg-red-700 hover:bg-red-600 text-white font-black py-2.5 sm:py-3.5 px-4 rounded-xl text-[clamp(1.1rem,2.6vw,1.65rem)] flex items-center justify-center gap-2 shadow-md border border-red-400">
+        <button onclick="openConfirmModal()" class="tactile-btn bg-red-700 hover:bg-red-600 text-white font-black py-2.5 sm:py-3.5 px-2 rounded-xl text-[clamp(1rem,2.5vw,1.5rem)] flex items-center justify-center gap-1.5 shadow-md border border-red-400">
             <span>🔄</span>
             <span>VÁN MỚI</span>
+        </button>
+        <button onclick="openSettings()" aria-label="Cài đặt" class="tactile-btn bg-[#4a2e19] hover:bg-[#5a3820] text-amber-100 font-black py-2.5 sm:py-3.5 px-4 sm:px-5 rounded-xl text-[clamp(1.2rem,2.8vw,1.7rem)] flex items-center justify-center shadow-md border border-[#784b2a]">
+            ⚙️
         </button>
     </div>
 
@@ -185,6 +166,40 @@
                     🔄 Ván Mới
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Settings -->
+    <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onclick="if (event.target === this) closeSettings()">
+        <div class="bg-[#362214] border-4 border-amber-400 rounded-2xl max-w-md w-full p-4 sm:p-5 shadow-2xl">
+            <h2 class="text-2xl font-black text-amber-300 mb-3 text-center">⚙️ CÀI ĐẶT</h2>
+
+            <div class="mb-3">
+                <div class="font-extrabold text-amber-200 mb-1.5 text-[clamp(1rem,2.3vw,1.3rem)]">Mức độ</div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button id="diff-1" onclick="setDifficulty(1)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-black text-[clamp(0.95rem,2.4vw,1.45rem)] bg-amber-500 text-stone-950 ring-2 ring-amber-200">Rất Dễ</button>
+                    <button id="diff-2" onclick="setDifficulty(2)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">Dễ</button>
+                    <button id="diff-3" onclick="setDifficulty(3)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">Vừa</button>
+                    <button id="diff-4" onclick="setDifficulty(4)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">Khó</button>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <div class="font-extrabold text-amber-200 mb-1.5 text-[clamp(1rem,2.3vw,1.3rem)]">Chế độ chơi</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="mode-ai" onclick="setMode('ai')" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-black text-[clamp(0.9rem,2.2vw,1.3rem)] bg-amber-500 text-stone-950 ring-2 ring-amber-200">🤖 Đánh với máy</button>
+                    <button id="mode-pvp" onclick="setMode('pvp')" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.9rem,2.2vw,1.3rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">👥 Đánh 2 người</button>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="font-extrabold text-amber-200 mb-1.5 text-[clamp(1rem,2.3vw,1.3rem)]">Âm thanh</div>
+                <button id="btnSound" onclick="toggleSound()" class="tactile-btn w-full py-2 sm:py-3 px-3 rounded-xl font-black text-[clamp(1rem,2.4vw,1.4rem)] bg-[#4a2e19] text-amber-100 border border-[#784b2a] flex items-center justify-center gap-2">
+                    <span id="soundIcon">🔊</span><span id="soundLabel">Đang BẬT</span>
+                </button>
+            </div>
+
+            <button onclick="closeSettings()" class="tactile-btn w-full bg-green-600 text-white font-black py-3 px-4 rounded-xl text-[clamp(1.1rem,2.5vw,1.5rem)]">XONG</button>
         </div>
     </div>
 
@@ -310,9 +325,14 @@
             } catch (err) {}
         }
 
+        function applySoundUI() {
+            document.getElementById('soundIcon').textContent = soundOn ? '🔊' : '🔇';
+            document.getElementById('soundLabel').textContent = soundOn ? 'Đang BẬT' : 'Đang TẮT';
+        }
+
         function toggleSound() {
             soundOn = !soundOn;
-            document.getElementById('soundIcon').textContent = soundOn ? '🔊' : '🔇';
+            applySoundUI();
             saveSettings();
             if (soundOn) playTone('select');
         }
@@ -372,7 +392,7 @@
                 }
             } catch (e) {}
             applyModeUI();
-            document.getElementById('soundIcon').textContent = soundOn ? '🔊' : '🔇';
+            applySoundUI();
         }
 
         let toastTimer = 0;
@@ -949,40 +969,61 @@
         let padY = 36;
 
         function resizeBoard() {
-            const availW = window.innerWidth - 16;
-            const topH = document.getElementById('topBar').offsetHeight || 95;
-            const actH = document.getElementById('actionBar').offsetHeight || 56;
-            const botH = document.getElementById('bottomBar').offsetHeight || 85;
+            // 1) Cỡ chữ gốc (rem) tăng nhẹ theo màn hình => nút, chữ, khung đều to theo tỉ lệ
+            const base = Math.min(window.innerWidth, window.innerHeight * 0.62);
+            const rootPx = Math.max(14, Math.min(28, 14 + (base - 360) * 0.03));
+            document.documentElement.style.fontSize = rootPx.toFixed(2) + 'px';
 
-            const availH = Math.max(window.innerHeight - (topH + actH + botH + 36), 300);
+            const px = (v) => parseFloat(v) || 0;
+            const bcs = getComputedStyle(document.body);
+            const bodyX = px(bcs.paddingLeft) + px(bcs.paddingRight);
+            const bodyY = px(bcs.paddingTop) + px(bcs.paddingBottom);
+            const gap = px(bcs.rowGap) || 8;
 
-            const byW = Math.floor(availW / 9.25);
-            const byH = Math.floor(availH / 10.25);
+            const frame = document.getElementById('boardFrame');
+            const fcs = getComputedStyle(frame);
+            const frameX = px(fcs.paddingLeft) + px(fcs.paddingRight) + px(fcs.borderLeftWidth) + px(fcs.borderRightWidth);
+            const frameY = px(fcs.paddingTop) + px(fcs.paddingBottom) + px(fcs.borderTopWidth) + px(fcs.borderBottomWidth);
 
-            cellSize = Math.max(32, Math.min(150, Math.min(byW, byH)));
-            padX = Math.round(cellSize * 0.62);
-            padY = Math.round(cellSize * 0.62);
+            const topBar = document.getElementById('topBar');
+            const actionBar = document.getElementById('actionBar');
+            const bottomBar = document.getElementById('bottomBar');
+
+            // 2) Tính lại vài lượt vì chiều cao các thanh phụ thuộc cỡ quân bị ăn (theo cỡ ô)
+            for (let i = 0; i < 3; i++) {
+                const availW = window.innerWidth - bodyX - frameX;
+                const availH = window.innerHeight - bodyY - frameY - gap * 3
+                    - topBar.offsetHeight - actionBar.offsetHeight - bottomBar.offsetHeight;
+
+                const byW = availW / 9.24;   // bàn rộng = 8 ô + 2 lề (0.62 ô)
+                const byH = availH / 10.24;  // bàn cao = 9 ô + 2 lề
+
+                cellSize = Math.max(24, Math.floor(Math.min(byW, byH)));
+                padX = Math.round(cellSize * 0.62);
+                padY = Math.round(cellSize * 0.62);
+                document.documentElement.style.setProperty('--cell', cellSize + 'px');
+
+                const frameW = cellSize * 8 + padX * 2 + frameX;
+                [topBar, actionBar, bottomBar].forEach(el => { el.style.maxWidth = `${frameW}px`; });
+            }
 
             const cssW = cellSize * 8 + padX * 2;
             const cssH = cellSize * 9 + padY * 2;
-
             const dpr = window.devicePixelRatio || 1;
-            canvas.width = cssW * dpr;
-            canvas.height = cssH * dpr;
+            const bw = Math.round(cssW * dpr), bh = Math.round(cssH * dpr);
+            if (canvas.width !== bw || canvas.height !== bh) {
+                canvas.width = bw;
+                canvas.height = bh;
+            }
             canvas.style.width = `${cssW}px`;
             canvas.style.height = `${cssH}px`;
 
-            // Match all bars to exact board frame width
-            const frameW = cssW + 20;
-            ['topBar', 'actionBar', 'bottomBar'].forEach(id => {
-                document.getElementById(id).style.maxWidth = `${frameW}px`;
-            });
-
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            drawBoard();
+            if (board.length === 10) drawBoard();
         }
 
         window.addEventListener('resize', resizeBoard);
+        window.addEventListener('orientationchange', () => setTimeout(resizeBoard, 200));
 
         function getXY(r, c) {
             return { x: padX + c * cellSize, y: padY + r * cellSize };
@@ -1485,6 +1526,7 @@
 
             renderTray(capturedByRed, 'redCapturedList');
             renderTray(capturedByBlack, 'blackCapturedList');
+            requestAnimationFrame(resizeBoard);
         }
 
         function showGameOver(winner) {
@@ -1514,6 +1556,14 @@
             undoMove();
         }
 
+        function openSettings() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
         let pendingConfirm = null;
 
         function askConfirm(title, desc, action) {
@@ -1541,6 +1591,8 @@
 
         window.onload = () => {
             loadSettings();
+            applyModeUI();
+            applySoundUI();
             resizeBoard();
             if (!loadSavedGameState()) {
                 startNewGame();
