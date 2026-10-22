@@ -83,7 +83,7 @@
             flex-shrink: 0;
         }
 
-        #redCapturedList, #blackCapturedList { min-height: calc(var(--cell, 40px) * 0.744); align-content: flex-start; }
+        #redCapturedList, #blackCapturedList { min-height: calc(var(--cell, 40px) * 0.744 + 8px); align-content: flex-start; }
 
         .mini-piece-red {
             border: 2.4px solid #991b1b;
@@ -1001,6 +1001,7 @@
                 padX = Math.round(cellSize * 0.62);
                 padY = Math.round(cellSize * 0.62);
                 document.documentElement.style.setProperty('--cell', cellSize + 'px');
+                renderTrays();
 
                 const frameW = cellSize * 8 + padX * 2 + frameX;
                 [topBar, trayTop, trayBottom, actionBar].forEach(el => { el.style.maxWidth = `${frameW}px`; });
@@ -1325,7 +1326,11 @@
 
         function drawPiece(r, c, piece) {
             const { x, y } = getXY(r, c);
-            const rad = cellSize * 0.465;
+            drawPieceOn(ctx, x, y, cellSize * 0.465, piece);
+        }
+
+        // Vẽ 1 quân lên canvas bất kỳ (dùng chung cho quân trên bàn và quân bị ăn => giống hệt nhau)
+        function drawPieceOn(ctx, x, y, rad, piece) {
             const isRed = piece.color === RED;
 
             ctx.save();
@@ -1508,24 +1513,36 @@
             const inChk = isInCheck(board, turn);
             checkBadge.classList.toggle('hidden', !inChk);
 
-            // Render captured pieces as miniature 3D circular chess tokens (full width)
-            const renderTray = (arr, elId) => {
-                const el = document.getElementById(elId);
-                if (arr.length === 0) {
-                    el.innerHTML = '';
-                    return;
-                }
-                el.innerHTML = arr.map(p => {
-                    const isRedPiece = p.color === RED;
-                    const han = isRedPiece ? PIECE_DATA[p.trueType].rHan : PIECE_DATA[p.trueType].bHan;
-                    const tokenClass = isRedPiece ? 'mini-piece-red' : 'mini-piece-black';
-                    return `<span class="mini-piece ${tokenClass}">${han}</span>`;
-                }).join('');
-            };
+            renderTrays();
+            requestAnimationFrame(resizeBoard);
+        }
 
+        const CAPTURED_SCALE = 0.8; // quân bị ăn = 80% quân trên bàn
+
+        function renderTray(arr, elId) {
+            const el = document.getElementById(elId);
+            el.innerHTML = '';
+            const rad = cellSize * 0.465 * CAPTURED_SCALE;
+            const size = Math.ceil(rad * 2 + 12);   // chừa chỗ cho bóng đổ
+            const dpr = window.devicePixelRatio || 1;
+            for (const p of arr) {
+                const cv = document.createElement('canvas');
+                cv.width = Math.round(size * dpr);
+                cv.height = Math.round(size * dpr);
+                cv.style.width = size + 'px';
+                cv.style.height = size + 'px';
+                cv.style.margin = '-2px';
+                const c2 = cv.getContext('2d');
+                c2.setTransform(dpr, 0, 0, dpr, 0, 0);
+                // Quân bị ăn luôn hiện mặt ngửa
+                drawPieceOn(c2, size / 2, size / 2 - 1, rad, { ...p, isHidden: false });
+                el.appendChild(cv);
+            }
+        }
+
+        function renderTrays() {
             renderTray(capturedByRed, 'redCapturedList');
             renderTray(capturedByBlack, 'blackCapturedList');
-            requestAnimationFrame(resizeBoard);
         }
 
         function showGameOver(winner) {
