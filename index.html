@@ -608,7 +608,7 @@
             return color === RED ? (r >= 7 && r <= 9) : (r >= 0 && r <= 2);
         }
 
-        function getPseudoMoves(b, r, c) {
+        function getPseudoMoves(b, r, c, incOwn) {
             const p = b[r][c];
             if (!p) return [];
             const moves = [];
@@ -620,7 +620,7 @@
                     const nr = r + dr, nc = c + dc;
                     if (inPalace(nr, nc, color)) {
                         const t = b[nr][nc];
-                        if (!t || t.color !== color) moves.push({ r: nr, c: nc });
+                        if (!t || (incOwn || t.color !== color)) moves.push({ r: nr, c: nc });
                     }
                 }
             } else if (role === 'A') {
@@ -630,7 +630,7 @@
                     if (!inBounds(nr, nc)) continue;
                     if (p.isHidden && !inPalace(nr, nc, color)) continue;
                     const t = b[nr][nc];
-                    if (!t || t.color !== color) moves.push({ r: nr, c: nc });
+                    if (!t || (incOwn || t.color !== color)) moves.push({ r: nr, c: nc });
                 }
             } else if (role === 'E') {
                 // Elephant in Cờ Úp can cross river once revealed
@@ -639,7 +639,7 @@
                     const er = r + dr / 2, ec = c + dc / 2;
                     if (inBounds(nr, nc) && !b[er][ec]) {
                         const t = b[nr][nc];
-                        if (!t || t.color !== color) moves.push({ r: nr, c: nc });
+                        if (!t || (incOwn || t.color !== color)) moves.push({ r: nr, c: nc });
                     }
                 }
             } else if (role === 'H') {
@@ -651,7 +651,7 @@
                     const nr = r + dr, nc = c + dc;
                     if (inBounds(nr, nc) && !b[r + lr][c + lc]) {
                         const t = b[nr][nc];
-                        if (!t || t.color !== color) moves.push({ r: nr, c: nc });
+                        if (!t || (incOwn || t.color !== color)) moves.push({ r: nr, c: nc });
                     }
                 }
             } else if (role === 'R') {
@@ -662,7 +662,7 @@
                         if (!t) {
                             moves.push({ r: nr, c: nc });
                         } else {
-                            if (t.color !== color) moves.push({ r: nr, c: nc });
+                            if ((incOwn || t.color !== color)) moves.push({ r: nr, c: nc });
                             break;
                         }
                         nr += dr; nc += dc;
@@ -678,7 +678,7 @@
                             if (!t) moves.push({ r: nr, c: nc });
                             else jumped = true;
                         } else if (t) {
-                            if (t.color !== color) moves.push({ r: nr, c: nc });
+                            if ((incOwn || t.color !== color)) moves.push({ r: nr, c: nc });
                             break;
                         }
                         nr += dr; nc += dc;
@@ -690,14 +690,14 @@
                 const fr = r + dir;
                 if (inBounds(fr, c)) {
                     const t = b[fr][c];
-                    if (!t || t.color !== color) moves.push({ r: fr, c });
+                    if (!t || (incOwn || t.color !== color)) moves.push({ r: fr, c });
                 }
                 if (crossed) {
                     for (const dc of [-1, 1]) {
                         const sc = c + dc;
                         if (inBounds(r, sc)) {
                             const t = b[r][sc];
-                            if (!t || t.color !== color) moves.push({ r, c: sc });
+                            if (!t || (incOwn || t.color !== color)) moves.push({ r, c: sc });
                         }
                     }
                 }
@@ -857,8 +857,17 @@
             drawBoard();
         }
 
+        // Mức đánh giá (đặt theo độ khó trước khi máy tính nước):
+        //  2 (Dễ):      chỉ đếm giá trị quân
+        //  3 (Vừa):     + giữ quân (quân bị treo / bị ăn lỗ trừ điểm, quân được bảo vệ cộng điểm)
+        //  4-5 (Khó):   + thế trận: bó hẹp đường đi đối thủ, áp lực lên Tướng, không lật quân úp vô cớ
+        let evalMode = 2;
+
         function evaluateBoard(b) {
+            const lvl = evalMode;
             let score = 0;
+            const pieces = [];
+
             for (let r = 0; r < 10; r++) {
                 for (let c = 0; c < 9; c++) {
                     const p = b[r][c];
@@ -871,7 +880,70 @@
                         if (p.color === BLACK && r >= 5) v += 65;
                     }
                     score += (p.color === BLACK ? v : -v);
+                    if (lvl >= 3) pieces.push({ p, r, c, v });
                 }
+            }
+            if (lvl < 3) return score;
+
+            // Bản đồ tấn công / bảo vệ của mỗi bên
+            const attCnt = { [RED]: new Int8Array(90), [BLACK]: new Int8Array(90) };
+            const minAtt = { [RED]: new Int16Array(90).fill(32000), [BLACK]: new Int16Array(90).fill(32000) };
+            const mobility = { [RED]: 0, [BLACK]: 0 };
+
+            for (const it of pieces) {
+                const col = it.p.color;
+                const role = it.p.isHidden ? it.p.startRole : it.p.trueType;
+                const av = PIECE_DATA[role].val;
+                const mv = getPseudoMoves(b, it.r, it.c, true);
+                for (const m of mv) {
+                    const idx = m.r * 9 + m.c;
+                    attCnt[col][idx]++;
+                    if (av < minAtt[col][idx]) minAtt[col][idx] = av;
+                    const t = b[m.r][m.c];
+                    if (!t || t.color !== col) mobility[col]++;
+                }
+            }
+
+            // Giữ quân
+            for (const it of pieces) {
+                const p = it.p;
+                if (!p.isHidden && p.trueType === 'K') continue;
+                const col = p.color;
+                const opp = col === RED ? BLACK : RED;
+                const idx = it.r * 9 + it.c;
+                const ea = attCnt[opp][idx];
+                const od = attCnt[col][idx];
+                let pen = 0;
+                if (ea > 0) {
+                    if (od === 0) pen = it.v * 0.3;                       // quân bị treo
+                    else if (minAtt[opp][idx] < it.v) pen = (it.v - minAtt[opp][idx]) * 0.25; // đổi quân lỗ
+                }
+                if (od > 0) pen -= 4 * Math.min(od, 2);                   // có quân bảo vệ
+                score += col === BLACK ? -pen : pen;
+            }
+
+            if (lvl >= 4) {
+                // Bó hẹp đường đi: bên nào nhiều nước đi hơn thì có thế tốt hơn
+                score += 2.5 * (mobility[BLACK] - mobility[RED]);
+
+                // Áp lực lên Tướng (các ô quanh Tướng bị khống chế), nhưng chỉ cộng nhẹ để không chiếu vô nghĩa
+                for (const it of pieces) {
+                    if (it.p.isHidden || it.p.trueType !== 'K') continue;
+                    const col = it.p.color;
+                    const opp = col === RED ? BLACK : RED;
+                    let pr = 0;
+                    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+                        const nr = it.r + dr, nc = it.c + dc;
+                        if (inPalace(nr, nc, col) && attCnt[opp][nr * 9 + nc] > 0) pr += 10;
+                    }
+                    if (attCnt[opp][it.r * 9 + it.c] > 0) pr += 12;
+                    score += col === RED ? pr : -pr;
+                }
+
+                // Chưa cần thì chưa vội lật quân úp của mình
+                let hb = 0;
+                for (const it of pieces) if (it.p.isHidden && it.p.color === BLACK) hb++;
+                score += 6 * hb;
             }
             return score;
         }
@@ -1009,13 +1081,13 @@
             return best;
         }
 
-        function searchBestMove(rootMoves, det, ms) {
+        function searchBestMove(rootMoves, det, ms, maxDepth) {
             aiDeadline = Date.now() + ms;
             aiTimedOut = false;
             let ordered = shuffle(rootMoves);
             ordered.sort((x, y) => captureValue(det, y) - captureValue(det, x));
             let bestMove = null;
-            for (let d = 1; d <= 6; d++) {
+            for (let d = 1; d <= maxDepth; d++) {
                 let alpha = -Infinity, curBest = null, curScore = -Infinity;
                 for (const m of ordered) {
                     const sc = abSearch(simMove(det, m), d - 1, alpha, Infinity, false);
@@ -1056,6 +1128,7 @@
             });
             const mvs = nonRepeating.length > 0 ? nonRepeating : allMoves;
 
+            evalMode = Math.max(2, difficulty);
             let chosen = mvs[0];
 
             if (difficulty <= 2) {
@@ -1066,22 +1139,18 @@
                     if (s > best) { best = s; chosen = m; }
                 }
             } else if (difficulty === 3) {
-                // Vừa: nhìn trước 2 nước, vẫn còn nhầm nhẹ
+                // Vừa: nhìn trước 2 nước, biết giữ quân, vẫn còn nhầm nhẹ
                 let best = -Infinity;
                 for (const m of shuffle(mvs)) {
                     const s = minimax(simMove(det, m), 1, -Infinity, Infinity, false) + (Math.random() * 40 - 20);
                     if (s > best) { best = s; chosen = m; }
                 }
             } else if (difficulty === 4) {
-                // Khó: nhìn trước 3 nước
-                let best = -Infinity;
-                for (const m of shuffle(mvs)) {
-                    const s = minimax(simMove(det, m), 2, -Infinity, Infinity, false);
-                    if (s > best) { best = s; chosen = m; }
-                }
+                // Khó: nhìn trước ~3 nước, hiểu thế trận (giữ quân, bó hẹp đối thủ, áp lực lên Tướng)
+                chosen = searchBestMove(mvs, det, 900, 3);
             } else {
-                // Rất khó: tìm sâu dần theo thời gian (tối đa ~2 giây), ưu tiên nước ăn quân
-                chosen = searchBestMove(mvs, det, 2000);
+                // Rất khó: tìm sâu dần theo thời gian (tối đa ~2 giây), hiểu thế trận, ưu tiên nước ăn quân
+                chosen = searchBestMove(mvs, det, 2000, 6);
             }
 
             aiBusy = false;
