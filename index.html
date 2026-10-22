@@ -912,16 +912,51 @@
             }
         }
 
+        /* ---- Chống chiếu đi chiếu lại / lặp thế cờ ----
+         * Máy không được chiếu tướng để lặp lại một thế cờ đã xuất hiện,
+         * và không được lặp 1 thế cờ quá 2 lần (trừ khi không còn nước nào khác). */
+        function positionKey(b, side) {
+            let k = side;
+            for (let r = 0; r < 10; r++) {
+                for (let c = 0; c < 9; c++) {
+                    const p = b[r][c];
+                    k += p ? p.color + p.trueType + (p.isHidden ? 'h' : '') : '.';
+                }
+            }
+            return k;
+        }
+
+        function positionCounts() {
+            const m = new Map();
+            const add = (b, t) => {
+                const k = positionKey(b, t);
+                m.set(k, (m.get(k) || 0) + 1);
+            };
+            for (const h of historyStack) add(h.board, h.turn);
+            add(board, turn);
+            return m;
+        }
+
         function makeAIMove() {
             if (gameOver || turn !== BLACK) {
                 aiBusy = false;
                 return;
             }
-            const mvs = getAllMoves(board, BLACK);
-            if (mvs.length === 0) {
+            const allMoves = getAllMoves(board, BLACK);
+            if (allMoves.length === 0) {
                 aiBusy = false;
                 return;
             }
+
+            const seen = positionCounts();
+            const nonRepeating = allMoves.filter(m => {
+                const nb = simMove(board, m);
+                const n = seen.get(positionKey(nb, RED)) || 0;
+                if (n === 0) return true;
+                if (n >= 2) return false;
+                return !isInCheck(nb, RED); // lặp 1 lần: chỉ cấm nếu là nước chiếu
+            });
+            const mvs = nonRepeating.length > 0 ? nonRepeating : allMoves;
 
             let chosen = mvs[0];
 
