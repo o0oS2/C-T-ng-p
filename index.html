@@ -175,10 +175,10 @@
             <div class="mb-3">
                 <div class="font-extrabold text-amber-200 mb-1.5 text-[clamp(1rem,2.3vw,1.3rem)]">Mức độ</div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <button id="diff-1" onclick="setDifficulty(1)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-black text-[clamp(0.95rem,2.4vw,1.45rem)] bg-amber-500 text-stone-950 ring-2 ring-amber-200">Rất Dễ</button>
-                    <button id="diff-2" onclick="setDifficulty(2)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">Dễ</button>
+                    <button id="diff-2" onclick="setDifficulty(2)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-black text-[clamp(0.95rem,2.4vw,1.45rem)] bg-amber-500 text-stone-950 ring-2 ring-amber-200">Dễ</button>
                     <button id="diff-3" onclick="setDifficulty(3)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">Vừa</button>
                     <button id="diff-4" onclick="setDifficulty(4)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">Khó</button>
+                    <button id="diff-5" onclick="setDifficulty(5)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">Rất Khó</button>
                 </div>
             </div>
 
@@ -357,7 +357,7 @@
         let validMoves = [];
         let historyStack = [];
         let lastMove = null;
-        let difficulty = 1;
+        let difficulty = 2; // 2 Dễ, 3 Vừa, 4 Khó, 5 Rất khó
         let mode = 'ai'; // 'ai' = đánh với máy, 'pvp' = 2 người
         let gameOver = false;
         let aiBusy = false;
@@ -379,8 +379,8 @@
                 const raw = localStorage.getItem(STORAGE_KEYS.SETTINGS);
                 if (!raw) return;
                 const data = JSON.parse(raw);
-                if ([1, 2, 3, 4].includes(data.difficulty)) {
-                    difficulty = data.difficulty;
+                if ([1, 2, 3, 4, 5].includes(data.difficulty)) {
+                    difficulty = data.difficulty === 1 ? 2 : data.difficulty; // mức 1 (Rất Dễ) cũ => Dễ
                 }
                 if (data.mode === 'ai' || data.mode === 'pvp') {
                     mode = data.mode;
@@ -492,6 +492,8 @@
             return 'P';
         }
 
+        const PIECE_TEMPLATE = ['R','R','H','H','E','E','A','A','C','C','P','P','P','P','P'];
+
         function shuffle(arr) {
             const a = [...arr];
             for (let i = a.length - 1; i > 0; i--) {
@@ -505,7 +507,7 @@
             document.getElementById('gameOverModal').classList.add('hidden');
             board = Array.from({ length: 10 }, () => Array(9).fill(null));
 
-            const template = ['R','R','H','H','E','E','A','A','C','C','P','P','P','P','P'];
+            const template = PIECE_TEMPLATE;
             const rPool = shuffle(template);
             const bPool = shuffle(template);
 
@@ -548,7 +550,7 @@
         }
 
         function applyDifficultyUI(lv) {
-            for (let i = 1; i <= 4; i++) {
+            for (let i = 2; i <= 5; i++) {
                 const btn = document.getElementById(`diff-${i}`);
                 if (!btn) continue;
                 if (i === lv) {
@@ -920,7 +922,7 @@
             for (let r = 0; r < 10; r++) {
                 for (let c = 0; c < 9; c++) {
                     const p = b[r][c];
-                    k += p ? p.color + p.trueType + (p.isHidden ? 'h' : '') : '.';
+                    k += p ? p.color + (p.isHidden ? 'h' + p.startRole : p.trueType) : '.';
                 }
             }
             return k;
@@ -937,6 +939,98 @@
             return m;
         }
 
+        // Chia bài giả định cho các quân úp: mỗi phe có bộ 15 quân, trừ những quân đã lộ trên bàn
+        // và những quân đã bị ăn (các quân này ai cũng thấy). Quân úp còn lại được xáo ngẫu nhiên.
+        function determinizeBoard() {
+            const nb = cloneBoard(board);
+            for (const color of [RED, BLACK]) {
+                const pool = [...PIECE_TEMPLATE];
+                const drop = (t) => {
+                    const i = pool.indexOf(t);
+                    if (i >= 0) pool.splice(i, 1);
+                };
+                for (let r = 0; r < 10; r++) {
+                    for (let c = 0; c < 9; c++) {
+                        const p = board[r][c];
+                        if (p && p.color === color && !p.isHidden && p.trueType !== 'K') drop(p.trueType);
+                    }
+                }
+                const lost = color === RED ? capturedByBlack : capturedByRed;
+                for (const p of lost) if (p.trueType !== 'K') drop(p.trueType);
+
+                const deck = shuffle(pool);
+                for (let r = 0; r < 10; r++) {
+                    for (let c = 0; c < 9; c++) {
+                        const p = nb[r][c];
+                        if (p && p.color === color && p.isHidden) {
+                            p.trueType = deck.length ? deck.pop() : p.startRole;
+                        }
+                    }
+                }
+            }
+            return nb;
+        }
+
+        let aiDeadline = 0;
+        let aiTimedOut = false;
+
+        function captureValue(b, m) {
+            const t = b[m.toR][m.toC];
+            return t ? (t.isHidden ? 320 : PIECE_DATA[t.trueType].val) : 0;
+        }
+
+        function abSearch(b, depth, alpha, beta, maxPlayer) {
+            if (Date.now() > aiDeadline) { aiTimedOut = true; return 0; }
+            if (depth === 0) return evaluateBoard(b);
+            const col = maxPlayer ? BLACK : RED;
+            const mvs = getAllMoves(b, col);
+            if (mvs.length === 0) return maxPlayer ? -99999 - depth : 99999 + depth;
+            mvs.sort((x, y) => captureValue(b, y) - captureValue(b, x));
+
+            if (maxPlayer) {
+                let best = -Infinity;
+                for (const m of mvs) {
+                    const v = abSearch(simMove(b, m), depth - 1, alpha, beta, false);
+                    if (aiTimedOut) return 0;
+                    if (v > best) best = v;
+                    if (v > alpha) alpha = v;
+                    if (beta <= alpha) break;
+                }
+                return best;
+            }
+            let best = Infinity;
+            for (const m of mvs) {
+                const v = abSearch(simMove(b, m), depth - 1, alpha, beta, true);
+                if (aiTimedOut) return 0;
+                if (v < best) best = v;
+                if (v < beta) beta = v;
+                if (beta <= alpha) break;
+            }
+            return best;
+        }
+
+        function searchBestMove(rootMoves, det, ms) {
+            aiDeadline = Date.now() + ms;
+            aiTimedOut = false;
+            let ordered = shuffle(rootMoves);
+            ordered.sort((x, y) => captureValue(det, y) - captureValue(det, x));
+            let bestMove = null;
+            for (let d = 1; d <= 6; d++) {
+                let alpha = -Infinity, curBest = null, curScore = -Infinity;
+                for (const m of ordered) {
+                    const sc = abSearch(simMove(det, m), d - 1, alpha, Infinity, false);
+                    if (aiTimedOut) break;
+                    if (sc > curScore) { curScore = sc; curBest = m; }
+                    if (sc > alpha) alpha = sc;
+                }
+                if (aiTimedOut) break;       // lượt tìm dở dang thì bỏ, dùng kết quả độ sâu trước
+                bestMove = curBest;
+                ordered = [curBest, ...ordered.filter(x => x !== curBest)];
+                if (curScore > 90000) break; // đã thấy chiếu bí
+            }
+            return bestMove || ordered[0];
+        }
+
         function makeAIMove() {
             if (gameOver || turn !== BLACK) {
                 aiBusy = false;
@@ -948,9 +1042,13 @@
                 return;
             }
 
+            // Máy KHÔNG được biết quân úp là gì (của cả hai bên). Nó chỉ biết mỗi quân úp là 1 trong
+            // các quân còn lại chưa lộ mặt, rồi giả định ngẫu nhiên một cách chia bài hợp lệ để tính nước đi.
+            const det = determinizeBoard();
+
             const seen = positionCounts();
             const nonRepeating = allMoves.filter(m => {
-                const nb = simMove(board, m);
+                const nb = simMove(det, m);
                 const n = seen.get(positionKey(nb, RED)) || 0;
                 if (n === 0) return true;
                 if (n >= 2) return false;
@@ -960,32 +1058,30 @@
 
             let chosen = mvs[0];
 
-            if (difficulty === 1) {
-                // Rất Dễ: AI plays gently for fun, avoids capturing Red's major pieces if other moves exist
-                const gentle = mvs.filter(m => {
-                    const t = board[m.toR][m.toC];
-                    return !t || !['R', 'C', 'H'].includes(t.trueType);
-                });
-                const pool = gentle.length > 0 ? gentle : mvs;
-                chosen = pool[Math.floor(Math.random() * pool.length)];
-            } else if (difficulty === 2) {
+            if (difficulty <= 2) {
+                // Dễ: nhìn 1 nước, hay nhầm
                 let best = -Infinity;
                 for (const m of shuffle(mvs)) {
-                    const s = evaluateBoard(simMove(board, m)) + (Math.random() * 60 - 30);
+                    const s = evaluateBoard(simMove(det, m)) + (Math.random() * 120 - 60);
                     if (s > best) { best = s; chosen = m; }
                 }
             } else if (difficulty === 3) {
+                // Vừa: nhìn trước 2 nước, vẫn còn nhầm nhẹ
                 let best = -Infinity;
                 for (const m of shuffle(mvs)) {
-                    const s = minimax(simMove(board, m), 1, -Infinity, Infinity, false);
+                    const s = minimax(simMove(det, m), 1, -Infinity, Infinity, false) + (Math.random() * 40 - 20);
+                    if (s > best) { best = s; chosen = m; }
+                }
+            } else if (difficulty === 4) {
+                // Khó: nhìn trước 3 nước
+                let best = -Infinity;
+                for (const m of shuffle(mvs)) {
+                    const s = minimax(simMove(det, m), 2, -Infinity, Infinity, false);
                     if (s > best) { best = s; chosen = m; }
                 }
             } else {
-                let best = -Infinity;
-                for (const m of shuffle(mvs)) {
-                    const s = minimax(simMove(board, m), 2, -Infinity, Infinity, false);
-                    if (s > best) { best = s; chosen = m; }
-                }
+                // Rất khó: tìm sâu dần theo thời gian (tối đa ~2 giây), ưu tiên nước ăn quân
+                chosen = searchBestMove(mvs, det, 2000);
             }
 
             aiBusy = false;
