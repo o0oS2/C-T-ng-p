@@ -117,11 +117,8 @@
         </div>
 
         <!-- 2. STATUS BAR: Single Clear Line -->
-        <div id="statusBar" class="w-full bg-[#26160b] border-2 border-amber-600/80 rounded-xl py-1.5 sm:py-2 px-3 flex items-center justify-between gap-2 shadow-inner">
-            <div id="turnText" class="font-extrabold text-[clamp(1rem,2.3vw,1.4rem)] text-red-400 flex items-center gap-2">
-                <span class="w-3.5 h-3.5 rounded-full bg-red-500 inline-block animate-pulse"></span>
-                <span>Lượt của bạn (ĐỎ)</span>
-            </div>
+        <div id="statusBar" class="w-full bg-[#26160b] border-2 border-amber-600/80 rounded-xl py-1.5 sm:py-2 px-3 min-h-[2.6rem] sm:min-h-[3.3rem] flex items-center justify-between gap-2 shadow-inner">
+            <div id="turnText" class="font-extrabold text-[clamp(1rem,2.3vw,1.4rem)] flex items-center gap-2"></div>
             <div id="checkBadge" class="hidden bg-red-600 text-white font-black px-2.5 py-0.5 rounded-lg text-[clamp(0.85rem,2vw,1.25rem)] animate-bounce">
                 ⚠️ CHIẾU TƯỚNG!
             </div>
@@ -159,6 +156,9 @@
             <div id="blackCapturedList" class="flex flex-wrap items-center gap-1 sm:gap-1.5 w-full"></div>
         </div>
     </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 bottom-6 z-40 bg-[#362214] text-amber-100 border-2 border-amber-400 rounded-xl px-4 py-2 font-bold shadow-2xl text-[clamp(0.95rem,2.4vw,1.2rem)] text-center"></div>
 
     <!-- MODAL: Game Over -->
     <div id="gameOverModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
@@ -361,19 +361,47 @@
             document.getElementById('soundIcon').textContent = soundOn ? '🔊' : '🔇';
         }
 
+        let toastTimer = 0;
+        function showToast(msg) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.add('hidden'), 3000);
+        }
+
         function saveGameState() {
+            // Chưa có bàn cờ hợp lệ thì không ghi đè bản đã lưu
+            if (!Array.isArray(board) || board.length !== 10) return;
             try {
                 const state = {
+                    v: 2,
                     board,
                     turn,
-                    historyStack,
+                    historyStack: historyStack.slice(-200),
                     capturedByRed,
                     capturedByBlack,
                     lastMove,
-                    gameOver
+                    gameOver,
+                    savedAt: Date.now()
                 };
                 localStorage.setItem(STORAGE_KEYS.GAME_STATE, JSON.stringify(state));
             } catch (e) {}
+        }
+
+        // Tắt tab / thoát trình duyệt / vuốt bỏ app / chuyển app: lưu ngay lập tức
+        window.addEventListener('pagehide', saveGameState);
+        window.addEventListener('beforeunload', saveGameState);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') saveGameState();
+        });
+
+        function isValidSavedBoard(b) {
+            if (!Array.isArray(b) || b.length !== 10) return false;
+            return b.every(row =>
+                Array.isArray(row) && row.length === 9 &&
+                row.every(p => p === null || (p && (p.color === RED || p.color === BLACK) && PIECE_DATA[p.trueType]))
+            );
         }
 
         function loadSavedGameState() {
@@ -381,15 +409,8 @@
                 const raw = localStorage.getItem(STORAGE_KEYS.GAME_STATE);
                 if (!raw) return false;
                 const state = JSON.parse(raw);
-                if (
-                    !state ||
-                    !Array.isArray(state.board) ||
-                    state.board.length !== 10 ||
-                    !Array.isArray(state.board[0]) ||
-                    state.board[0].length !== 9
-                ) {
-                    return false;
-                }
+                if (!state || !isValidSavedBoard(state.board)) return false;
+
                 board = state.board;
                 turn = state.turn === BLACK ? BLACK : RED;
                 historyStack = Array.isArray(state.historyStack) ? state.historyStack : [];
@@ -404,11 +425,17 @@
                 updateStatusUI();
                 drawBoard();
 
-                // If the game was saved during AI's turn and not finished, trigger AI move automatically
-                if (!gameOver && turn === BLACK) {
-                    aiBusy = true;
-                    updateStatusUI();
-                    setTimeout(makeAIMove, 450);
+                if (gameOver) {
+                    // Người đi nước cuối là người thắng; lượt hiện tại thuộc về bên thua
+                    showGameOver(turn === RED ? BLACK : RED);
+                } else {
+                    if (historyStack.length > 0) showToast('Đã mở lại ván đang chơi dở');
+                    // Nếu thoát đúng lúc đến lượt máy thì máy đi tiếp
+                    if (turn === BLACK) {
+                        aiBusy = true;
+                        updateStatusUI();
+                        setTimeout(makeAIMove, 450);
+                    }
                 }
                 return true;
             } catch (e) {
@@ -720,6 +747,7 @@
                 playTone('check');
                 updateStatusUI();
                 drawBoard();
+                if (moving.color === BLACK) startPulse();
                 showGameOver(moving.color);
                 return;
             }
@@ -732,6 +760,7 @@
 
             updateStatusUI();
             drawBoard();
+            if (moving.color === BLACK) startPulse();
 
             if (!gameOver && turn === BLACK) {
                 aiBusy = true;
@@ -927,6 +956,157 @@
             ctx.stroke();
         }
 
+        /* ---- Đánh dấu nước đi gần nhất ----
+         * Máy (ĐEN) vừa đi (turn === RED): đường đi màu xanh dương nổi bật + mũi tên + nhấp nháy.
+         * Người chơi vừa đi: giữ dấu xanh lá nhẹ như cũ. */
+        const MACHINE_BLUE = '#1d4ed8';
+        const PULSE_MS = 1500;
+        let pulseStart = -1e9;
+        let pulseRAF = 0;
+
+        function startPulse() {
+            pulseStart = performance.now();
+            if (pulseRAF) return;
+            const tick = () => {
+                drawBoard();
+                if (performance.now() - pulseStart < PULSE_MS) pulseRAF = requestAnimationFrame(tick);
+                else pulseRAF = 0;
+            };
+            pulseRAF = requestAnimationFrame(tick);
+        }
+
+        function drawLastMoveUnder() {
+            if (!lastMove) return;
+            const f = getXY(lastMove.fromR, lastMove.fromC);
+            const t = getXY(lastMove.toR, lastMove.toC);
+            ctx.save();
+            if (turn === RED) {
+                // Ô máy vừa rời đi + ô máy vừa đến
+                ctx.fillStyle = 'rgba(37, 99, 235, 0.30)';
+                ctx.strokeStyle = MACHINE_BLUE;
+                ctx.lineWidth = 3.5;
+                ctx.setLineDash([7, 5]);
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, cellSize * 0.46, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = 'rgba(37, 99, 235, 0.40)';
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, cellSize * 0.57, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.strokeStyle = 'rgba(21, 128, 61, 0.75)';
+                ctx.lineWidth = 3.5;
+                ctx.setLineDash([6, 4]);
+                ctx.beginPath();
+                ctx.moveTo(f.x, f.y);
+                ctx.lineTo(t.x, t.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = '#15803d';
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, cellSize * 0.15, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#16a34a';
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, cellSize * 0.49, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawMachineMoveOver() {
+            if (!lastMove || turn !== RED) return;
+            const f = getXY(lastMove.fromR, lastMove.fromC);
+            const t = getXY(lastMove.toR, lastMove.toC);
+            const dx = t.x - f.x, dy = t.y - f.y;
+            const dist = Math.hypot(dx, dy);
+            if (!dist) return;
+            const ux = dx / dist, uy = dy / dist;
+            const px = -uy, py = ux;
+
+            const tipD = dist - cellSize * 0.53;            // mũi tên dừng ngay ngoài quân vừa đến
+            const head = Math.min(cellSize * 0.30, tipD * 0.6);
+            const halfW = cellSize * 0.19;
+            const bx = f.x + ux * (tipD - head), by = f.y + uy * (tipD - head);
+            const tx = f.x + ux * tipD, ty = f.y + uy * tipD;
+            const shaft = Math.max(4, cellSize * 0.09);
+
+            ctx.save();
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Viền trắng để nổi trên mọi nền
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.lineWidth = shaft + 5;
+            ctx.beginPath();
+            ctx.moveTo(f.x, f.y);
+            ctx.lineTo(bx, by);
+            ctx.stroke();
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(tx, ty);
+            ctx.lineTo(bx + px * halfW, by + py * halfW);
+            ctx.lineTo(bx - px * halfW, by - py * halfW);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.fill();
+
+            // Thân + đầu mũi tên màu xanh
+            ctx.strokeStyle = MACHINE_BLUE;
+            ctx.fillStyle = MACHINE_BLUE;
+            ctx.lineWidth = shaft;
+            ctx.beginPath();
+            ctx.moveTo(f.x, f.y);
+            ctx.lineTo(bx, by);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(tx, ty);
+            ctx.lineTo(bx + px * halfW, by + py * halfW);
+            ctx.lineTo(bx - px * halfW, by - py * halfW);
+            ctx.closePath();
+            ctx.fill();
+
+            // Chấm xuất phát
+            ctx.fillStyle = MACHINE_BLUE;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, cellSize * 0.11, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Vòng quanh quân vừa đến
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, cellSize * 0.5, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = MACHINE_BLUE;
+            ctx.lineWidth = 5.5;
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, cellSize * 0.5, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Vòng lan tỏa ngay sau khi máy đi
+            const elapsed = performance.now() - pulseStart;
+            if (elapsed >= 0 && elapsed < PULSE_MS) {
+                const k = (elapsed % 750) / 750;
+                ctx.globalAlpha = 0.85 * (1 - k);
+                ctx.strokeStyle = MACHINE_BLUE;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, cellSize * (0.5 + 0.4 * k), 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
         function drawBoard() {
             const w = cellSize * 8 + padX * 2;
             const h = cellSize * 9 + padY * 2;
@@ -1009,32 +1189,7 @@
             ctx.fillText('HÁN GIỚI', padX + 6 * cellSize, padY + 4.5 * cellSize);
             ctx.restore();
 
-            // Last Move Highlight (From dot & To ring)
-            if (lastMove) {
-                const f = getXY(lastMove.fromR, lastMove.fromC);
-                const t = getXY(lastMove.toR, lastMove.toC);
-
-                ctx.save();
-                ctx.strokeStyle = 'rgba(21, 128, 61, 0.75)';
-                ctx.lineWidth = 3.5;
-                ctx.setLineDash([6, 4]);
-                ctx.beginPath();
-                ctx.moveTo(f.x, f.y);
-                ctx.lineTo(t.x, t.y);
-                ctx.stroke();
-                ctx.restore();
-
-                ctx.fillStyle = '#15803d';
-                ctx.beginPath();
-                ctx.arc(f.x, f.y, cellSize * 0.15, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.strokeStyle = '#16a34a';
-                ctx.lineWidth = 5;
-                ctx.beginPath();
-                ctx.arc(t.x, t.y, cellSize * 0.49, 0, Math.PI * 2);
-                ctx.stroke();
-            }
+            drawLastMoveUnder();
 
             // Selected Piece Ring
             if (selected) {
@@ -1054,6 +1209,8 @@
                     if (board[r][c]) drawPiece(r, c, board[r][c]);
                 }
             }
+
+            drawMachineMoveOver();
 
             // Valid Move Dots / Capture Rings
             for (const m of validMoves) {
@@ -1245,8 +1402,8 @@
             btnUndo.disabled = historyStack.length === 0 || aiBusy;
 
             if (turn === RED) {
-                turnText.className = 'font-extrabold text-[clamp(1rem,2.3vw,1.4rem)] text-red-400 flex items-center gap-2';
-                turnText.innerHTML = `<span class="w-3.5 h-3.5 rounded-full bg-red-500 inline-block animate-pulse"></span><span>Lượt của bạn (ĐỎ)</span>`;
+                // Lượt người chơi (ĐỎ): không hiển thị chữ nào
+                turnText.innerHTML = '';
             } else {
                 turnText.className = 'font-extrabold text-[clamp(1rem,2.3vw,1.4rem)] text-slate-300 flex items-center gap-2';
                 turnText.innerHTML = `<span class="w-3.5 h-3.5 rounded-full bg-slate-400 inline-block animate-ping"></span><span>Máy đang suy nghĩ...</span>`;
