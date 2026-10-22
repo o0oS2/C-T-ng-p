@@ -92,26 +92,6 @@
             border: 2.5px solid #1e293b;
             color: #0f172a;
         }
-
-        /* Miniature 3D Face-Down Piece Icon for Remaining Hidden Count */
-        .mini-hidden-icon {
-            width: clamp(1.25rem, 2.8vw, 1.65rem);
-            height: clamp(1.25rem, 2.8vw, 1.65rem);
-            border-radius: 9999px;
-            display: inline-block;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.65), inset 0 1px 2px rgba(255, 255, 255, 0.35);
-            flex-shrink: 0;
-        }
-
-        .mini-hidden-red {
-            background: radial-gradient(circle at 32% 28%, #ea580c 0%, #c2410c 45%, #7c2d12 90%, #431407 100%);
-            border: 2px solid #fdba74;
-        }
-
-        .mini-hidden-black {
-            background: radial-gradient(circle at 32% 28%, #64748b 0%, #334155 45%, #1e293b 90%, #0f172a 100%);
-            border: 2px solid #cbd5e1;
-        }
     </style>
 </head>
 <body class="p-1.5 sm:p-3 gap-2 justify-between">
@@ -167,24 +147,16 @@
         </button>
     </div>
 
-    <!-- 5. BOTTOM CAPTURED & UNFLIPPED PIECES BAR: Visual 3D Piece Tokens Only (No Text Labels) -->
+    <!-- 5. BOTTOM CAPTURED PIECES BAR: Full-Width Visual 3D Piece Tokens Only -->
     <div id="bottomBar" class="w-full bg-[#2b1a0e] border-2 border-[#6e4423] rounded-xl p-1.5 sm:p-2.5 grid grid-cols-2 gap-2 sm:gap-3 shrink-0">
-        <!-- Left Box: Black Pieces Captured by Red + Red's Remaining Face-Down Count -->
-        <div class="bg-[#1c1008] rounded-lg p-1.5 sm:p-2 border border-orange-900/70 flex items-center gap-2 min-h-[2.6rem] sm:min-h-[3.2rem]">
-            <div class="flex items-center gap-1.5 bg-orange-950/70 border border-orange-800/60 px-2 py-1 rounded-lg shrink-0" title="Quân Đỏ chưa lật">
-                <span class="mini-hidden-icon mini-hidden-red"></span>
-                <span id="redHiddenCount" class="text-amber-200 font-black text-[clamp(0.95rem,2.1vw,1.3rem)] leading-none">15</span>
-            </div>
-            <div id="redCapturedList" class="flex flex-wrap items-center gap-1 sm:gap-1.5 flex-1"></div>
+        <!-- Left Box: Black Pieces Captured by Red -->
+        <div class="bg-[#1c1008] rounded-lg p-1.5 sm:p-2 border border-orange-900/70 flex items-center min-h-[2.6rem] sm:min-h-[3.2rem] w-full">
+            <div id="redCapturedList" class="flex flex-wrap items-center gap-1 sm:gap-1.5 w-full"></div>
         </div>
 
-        <!-- Right Box: Red Pieces Captured by Black + Black's Remaining Face-Down Count -->
-        <div class="bg-[#1c1008] rounded-lg p-1.5 sm:p-2 border border-slate-700/70 flex items-center gap-2 min-h-[2.6rem] sm:min-h-[3.2rem]">
-            <div class="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/70 px-2 py-1 rounded-lg shrink-0" title="Quân Đen chưa lật">
-                <span class="mini-hidden-icon mini-hidden-black"></span>
-                <span id="blackHiddenCount" class="text-slate-200 font-black text-[clamp(0.95rem,2.1vw,1.3rem)] leading-none">15</span>
-            </div>
-            <div id="blackCapturedList" class="flex flex-wrap items-center gap-1 sm:gap-1.5 flex-1"></div>
+        <!-- Right Box: Red Pieces Captured by Black -->
+        <div class="bg-[#1c1008] rounded-lg p-1.5 sm:p-2 border border-slate-700/70 flex items-center min-h-[2.6rem] sm:min-h-[3.2rem] w-full">
+            <div id="blackCapturedList" class="flex flex-wrap items-center gap-1 sm:gap-1.5 w-full"></div>
         </div>
     </div>
 
@@ -1283,21 +1255,7 @@
             const inChk = isInCheck(board, turn);
             checkBadge.classList.toggle('hidden', !inChk);
 
-            // Count unflipped pieces (Pure number next to 3D face-down icon)
-            let rUp = 0, bUp = 0;
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 9; c++) {
-                    const p = board[r][c];
-                    if (p && p.isHidden) {
-                        if (p.color === RED) rUp++;
-                        else bUp++;
-                    }
-                }
-            }
-            document.getElementById('redHiddenCount').textContent = rUp;
-            document.getElementById('blackHiddenCount').textContent = bUp;
-
-            // Render captured pieces as miniature 3D circular chess tokens (no text labels)
+            // Render captured pieces as miniature 3D circular chess tokens (full width)
             const renderTray = (arr, elId) => {
                 const el = document.getElementById(elId);
                 if (arr.length === 0) {
