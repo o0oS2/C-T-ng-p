@@ -104,7 +104,8 @@
         }
         #settingsModal h2 { font-size: calc(var(--ui, 18px) * 1.6); margin-bottom: calc(var(--ui, 18px) * 0.7); }
         #settingsModal .font-extrabold { font-size: calc(var(--ui, 18px) * 1.2); margin-bottom: calc(var(--ui, 18px) * 0.45); }
-        #settingsModal .mb-3, #settingsModal .mb-4, #settingsModal #btnShare { margin-bottom: calc(var(--ui, 18px) * 0.9); }
+        #settingsModal .sm-row { gap: calc(var(--ui, 18px) * 0.6); }
+        #settingsModal .mb-3, #settingsModal .mb-4 { margin-bottom: calc(var(--ui, 18px) * 0.9); }
         #settingsModal .grid { gap: calc(var(--ui, 18px) * 0.5); }
         #settingsModal button {
             font-size: calc(var(--ui, 18px) * 1.15);
@@ -215,16 +216,17 @@
                 </div>
             </div>
 
-            <div class="mb-4">
-                <div class="font-extrabold text-amber-200 mb-1.5 text-[clamp(1rem,2.3vw,1.3rem)]">Âm thanh</div>
-                <button id="btnSound" onclick="toggleSound()" class="tactile-btn w-full py-2 sm:py-3 px-3 rounded-xl font-black text-[clamp(1rem,2.4vw,1.4rem)] bg-[#4a2e19] text-amber-100 border border-[#784b2a] flex items-center justify-center gap-2">
+            <div class="mb-4 flex items-center justify-between sm-row">
+                <div class="font-extrabold text-amber-200 text-[clamp(1rem,2.3vw,1.3rem)]" style="margin-bottom:0">Âm thanh</div>
+                <button id="btnSound" onclick="toggleSound()" class="tactile-btn flex-1 py-2 sm:py-3 px-3 rounded-xl font-black text-[clamp(1rem,2.4vw,1.4rem)] bg-[#4a2e19] text-amber-100 border border-[#784b2a] flex items-center justify-center gap-2">
                     <span id="soundIcon">🔊</span><span id="soundLabel">Đang BẬT</span>
                 </button>
             </div>
 
-            <button id="btnShare" onclick="shareLink()" class="tactile-btn w-full mb-3 bg-[#4a2e19] text-amber-100 border border-[#784b2a] font-black py-3 px-3 rounded-xl text-[clamp(1rem,2.4vw,1.4rem)]">📤 Chia sẻ link</button>
-
-            <button onclick="closeSettings()" class="tactile-btn w-full bg-green-600 text-white font-black py-3 px-4 rounded-xl text-[clamp(1.1rem,2.5vw,1.5rem)]">XONG</button>
+            <div class="flex items-stretch sm-row">
+                <button onclick="closeSettings()" class="tactile-btn flex-1 bg-green-600 text-white font-black py-3 px-4 rounded-xl text-[clamp(1.1rem,2.5vw,1.5rem)]">XONG</button>
+                <button id="btnShare" onclick="shareLink()" aria-label="Chia sẻ" title="Chia sẻ" class="tactile-btn bg-[#4a2e19] text-amber-100 border border-[#784b2a] font-black rounded-xl" style="padding-left:calc(var(--ui,18px)*1.1);padding-right:calc(var(--ui,18px)*1.1)">📤</button>
+            </div>
         </div>
     </div>
 
@@ -1481,9 +1483,14 @@
             ctx.stroke();
             ctx.setLineDash([]);
 
+            ctx.fillStyle = 'rgba(37, 99, 235, 0.30)';
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, cellSize * 0.42, 0, Math.PI * 2);
+            ctx.fill();
+
             ctx.fillStyle = MACHINE_BLUE;
             ctx.beginPath();
-            ctx.arc(f.x, f.y, cellSize * 0.14, 0, Math.PI * 2);
+            ctx.arc(f.x, f.y, cellSize * 0.2, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         }
