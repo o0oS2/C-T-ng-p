@@ -1459,11 +1459,12 @@
          * Máy (ĐEN) vừa đi (turn === RED): đường đi màu xanh dương nổi bật + mũi tên + nhấp nháy.
          * Người chơi vừa đi: giữ dấu xanh lá nhẹ như cũ. */
         const MACHINE_BLUE = '#1d4ed8';
-        const PULSE_MS = 1500;
+        const PULSE_MS = 800;
         let pulseStart = -1e9;
         let pulseRAF = 0;
 
         function startPulse() {
+            if (mode !== 'ai') return;
             pulseStart = performance.now();
             if (pulseRAF) return;
             const tick = () => {
@@ -1474,41 +1475,33 @@
             pulseRAF = requestAnimationFrame(tick);
         }
 
+        // Máy (ĐEN) vừa đi trong chế độ đánh với máy. Đánh 2 người: hai bên đánh dấu giống hệt nhau.
+        function lastMoveByMachine() {
+            return mode === 'ai' && turn === RED;
+        }
+
         function drawLastMoveUnder() {
             if (!lastMove) return;
             const f = getXY(lastMove.fromR, lastMove.fromC);
             const t = getXY(lastMove.toR, lastMove.toC);
+            const machine = lastMoveByMachine();
+            const k = machine ? 1.2 : 1;   // dấu của máy chỉ to hơn dấu của người chơi một chút
             ctx.save();
-            if (turn === RED) {
-                // Ô máy vừa rời đi + ô máy vừa đến
-                ctx.fillStyle = 'rgba(37, 99, 235, 0.30)';
-                ctx.strokeStyle = MACHINE_BLUE;
-                ctx.lineWidth = 3;
-                ctx.setLineDash([7, 5]);
-                ctx.beginPath();
-                ctx.arc(f.x, f.y, cellSize * 0.40, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                ctx.setLineDash([]);
-                ctx.fillStyle = 'rgba(37, 99, 235, 0.40)';
-                ctx.beginPath();
-                ctx.arc(t.x, t.y, cellSize * 0.53, 0, Math.PI * 2);
-                ctx.fill();
-            } else {
-                ctx.strokeStyle = 'rgba(21, 128, 61, 0.75)';
-                ctx.lineWidth = 3.5;
-                ctx.setLineDash([6, 4]);
-                ctx.beginPath();
-                ctx.moveTo(f.x, f.y);
-                ctx.lineTo(t.x, t.y);
-                ctx.stroke();
-                ctx.setLineDash([]);
+            ctx.strokeStyle = machine ? 'rgba(29, 78, 216, 0.85)' : 'rgba(21, 128, 61, 0.75)';
+            ctx.lineWidth = 3.5 * k;
+            ctx.setLineDash([6 * k, 4 * k]);
+            ctx.beginPath();
+            ctx.moveTo(f.x, f.y);
+            ctx.lineTo(t.x, t.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
 
-                ctx.fillStyle = '#15803d';
-                ctx.beginPath();
-                ctx.arc(f.x, f.y, cellSize * 0.12, 0, Math.PI * 2);
-                ctx.fill();
+            ctx.fillStyle = machine ? MACHINE_BLUE : '#15803d';
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, cellSize * 0.12 * k, 0, Math.PI * 2);
+            ctx.fill();
 
+            if (!machine) {
                 ctx.strokeStyle = '#16a34a';
                 ctx.lineWidth = 4;
                 ctx.beginPath();
@@ -1518,89 +1511,24 @@
             ctx.restore();
         }
 
+        // Vòng quanh quân máy vừa đi (vẽ đè lên quân để luôn thấy rõ)
         function drawMachineMoveOver() {
-            if (!lastMove || turn !== RED) return;
-            const f = getXY(lastMove.fromR, lastMove.fromC);
+            if (!lastMove || !lastMoveByMachine()) return;
             const t = getXY(lastMove.toR, lastMove.toC);
-            const dx = t.x - f.x, dy = t.y - f.y;
-            const dist = Math.hypot(dx, dy);
-            if (!dist) return;
-            const ux = dx / dist, uy = dy / dist;
-            const px = -uy, py = ux;
-
-            const tipD = dist - cellSize * 0.53;            // mũi tên dừng ngay ngoài quân vừa đến
-            const head = Math.min(cellSize * 0.24, tipD * 0.6);
-            const halfW = cellSize * 0.15;
-            const bx = f.x + ux * (tipD - head), by = f.y + uy * (tipD - head);
-            const tx = f.x + ux * tipD, ty = f.y + uy * tipD;
-            const shaft = Math.max(3, cellSize * 0.07);
-
             ctx.save();
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-
-            // Viền trắng để nổi trên mọi nền
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.lineWidth = shaft + 4;
-            ctx.beginPath();
-            ctx.moveTo(f.x, f.y);
-            ctx.lineTo(bx, by);
-            ctx.stroke();
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.moveTo(tx, ty);
-            ctx.lineTo(bx + px * halfW, by + py * halfW);
-            ctx.lineTo(bx - px * halfW, by - py * halfW);
-            ctx.closePath();
-            ctx.stroke();
-            ctx.fill();
-
-            // Thân + đầu mũi tên màu xanh
             ctx.strokeStyle = MACHINE_BLUE;
-            ctx.fillStyle = MACHINE_BLUE;
-            ctx.lineWidth = shaft;
+            ctx.lineWidth = 4.8;
             ctx.beginPath();
-            ctx.moveTo(f.x, f.y);
-            ctx.lineTo(bx, by);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(tx, ty);
-            ctx.lineTo(bx + px * halfW, by + py * halfW);
-            ctx.lineTo(bx - px * halfW, by - py * halfW);
-            ctx.closePath();
-            ctx.fill();
-
-            // Chấm xuất phát
-            ctx.fillStyle = MACHINE_BLUE;
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.arc(f.x, f.y, cellSize * 0.09, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.arc(t.x, t.y, cellSize * 0.49, 0, Math.PI * 2);
             ctx.stroke();
 
-            // Vòng quanh quân vừa đến
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 7;
-            ctx.beginPath();
-            ctx.arc(t.x, t.y, cellSize * 0.5, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.strokeStyle = MACHINE_BLUE;
-            ctx.lineWidth = 4.5;
-            ctx.beginPath();
-            ctx.arc(t.x, t.y, cellSize * 0.5, 0, Math.PI * 2);
-            ctx.stroke();
-
-            // Vòng lan tỏa ngay sau khi máy đi
             const elapsed = performance.now() - pulseStart;
             if (elapsed >= 0 && elapsed < PULSE_MS) {
                 const k = (elapsed % 750) / 750;
-                ctx.globalAlpha = 0.85 * (1 - k);
-                ctx.strokeStyle = MACHINE_BLUE;
-                ctx.lineWidth = 3;
+                ctx.globalAlpha = 0.7 * (1 - k);
+                ctx.lineWidth = 2.5;
                 ctx.beginPath();
-                ctx.arc(t.x, t.y, cellSize * (0.5 + 0.3 * k), 0, Math.PI * 2);
+                ctx.arc(t.x, t.y, cellSize * (0.5 + 0.22 * k), 0, Math.PI * 2);
                 ctx.stroke();
             }
             ctx.restore();
