@@ -104,7 +104,7 @@
         }
         #settingsModal h2 { font-size: calc(var(--ui, 18px) * 1.6); margin-bottom: calc(var(--ui, 18px) * 0.7); }
         #settingsModal .font-extrabold { font-size: calc(var(--ui, 18px) * 1.2); margin-bottom: calc(var(--ui, 18px) * 0.45); }
-        #settingsModal .mb-3, #settingsModal .mb-4 { margin-bottom: calc(var(--ui, 18px) * 0.9); }
+        #settingsModal .mb-3, #settingsModal .mb-4, #settingsModal #btnShare { margin-bottom: calc(var(--ui, 18px) * 0.9); }
         #settingsModal .grid { gap: calc(var(--ui, 18px) * 0.5); }
         #settingsModal button {
             font-size: calc(var(--ui, 18px) * 1.15);
@@ -164,7 +164,7 @@
     </div>
 
     <!-- TOAST -->
-    <div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 bottom-6 z-40 bg-[#362214] text-amber-100 border-2 border-amber-400 rounded-xl px-4 py-2 font-bold shadow-2xl text-[clamp(0.95rem,2.4vw,1.2rem)] text-center"></div>
+    <div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 bottom-6 z-[60] bg-[#362214] text-amber-100 border-2 border-amber-400 rounded-xl px-4 py-2 font-bold shadow-2xl text-[clamp(0.95rem,2.4vw,1.2rem)] text-center"></div>
 
     <!-- MODAL: Game Over -->
     <div id="gameOverModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
@@ -188,7 +188,6 @@
     <!-- MODAL: Settings -->
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onclick="if (event.target === this) closeSettings()">
         <div class="bg-[#362214] border-4 border-amber-400 rounded-2xl max-w-md w-full max-h-[92vh] overflow-y-auto p-4 sm:p-5 shadow-2xl">
-            <h2 class="text-2xl font-black text-amber-300 mb-3 text-center">⚙️ CÀI ĐẶT</h2>
 
             <div class="mb-3">
                 <div class="font-extrabold text-amber-200 mb-1.5 text-[clamp(1rem,2.3vw,1.3rem)]">Mức độ</div>
@@ -209,7 +208,7 @@
             </div>
 
             <div class="mb-3">
-                <div class="font-extrabold text-amber-200 mb-1.5 text-[clamp(1rem,2.3vw,1.3rem)]">Luật chơi</div>
+                <div class="font-extrabold text-amber-200 mb-1.5 text-[clamp(1rem,2.3vw,1.3rem)]">Trò chơi</div>
                 <div class="grid grid-cols-2 gap-2">
                     <button id="variant-up" onclick="setVariant('up')" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-black text-[clamp(0.9rem,2.2vw,1.3rem)] bg-amber-500 text-stone-950 ring-2 ring-amber-200">🎴 Cờ úp</button>
                     <button id="variant-tuong" onclick="setVariant('tuong')" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.9rem,2.2vw,1.3rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">♟️ Cờ tướng</button>
@@ -222,6 +221,8 @@
                     <span id="soundIcon">🔊</span><span id="soundLabel">Đang BẬT</span>
                 </button>
             </div>
+
+            <button id="btnShare" onclick="shareLink()" class="tactile-btn w-full mb-3 bg-[#4a2e19] text-amber-100 border border-[#784b2a] font-black py-3 px-3 rounded-xl text-[clamp(1rem,2.4vw,1.4rem)]">📤 Chia sẻ link</button>
 
             <button onclick="closeSettings()" class="tactile-btn w-full bg-green-600 text-white font-black py-3 px-4 rounded-xl text-[clamp(1.1rem,2.5vw,1.5rem)]">XONG</button>
         </div>
@@ -1463,74 +1464,40 @@
         let pulseStart = -1e9;
         let pulseRAF = 0;
 
-        function startPulse() {
-            if (mode !== 'ai') return;
-            pulseStart = performance.now();
-            if (pulseRAF) return;
-            const tick = () => {
-                drawBoard();
-                if (performance.now() - pulseStart < PULSE_MS) pulseRAF = requestAnimationFrame(tick);
-                else pulseRAF = 0;
-            };
-            pulseRAF = requestAnimationFrame(tick);
-        }
+        function startPulse() { /* không còn hiệu ứng nhấp nháy */ }
 
-        // Máy (ĐEN) vừa đi trong chế độ đánh với máy. Đánh 2 người: hai bên đánh dấu giống hệt nhau.
-        function lastMoveByMachine() {
-            return mode === 'ai' && turn === RED;
-        }
-
+        // Dấu nước đi gần nhất: giống nhau cho người chơi, đối thủ và đánh 2 người
         function drawLastMoveUnder() {
             if (!lastMove) return;
             const f = getXY(lastMove.fromR, lastMove.fromC);
             const t = getXY(lastMove.toR, lastMove.toC);
-            const machine = lastMoveByMachine();
-            const k = machine ? 1.2 : 1;   // dấu của máy chỉ to hơn dấu của người chơi một chút
             ctx.save();
-            ctx.strokeStyle = machine ? 'rgba(29, 78, 216, 0.85)' : 'rgba(21, 128, 61, 0.75)';
-            ctx.lineWidth = 3.5 * k;
-            ctx.setLineDash([6 * k, 4 * k]);
+            ctx.strokeStyle = 'rgba(29, 78, 216, 0.85)';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([7, 5]);
             ctx.beginPath();
             ctx.moveTo(f.x, f.y);
             ctx.lineTo(t.x, t.y);
             ctx.stroke();
             ctx.setLineDash([]);
 
-            ctx.fillStyle = machine ? MACHINE_BLUE : '#15803d';
+            ctx.fillStyle = MACHINE_BLUE;
             ctx.beginPath();
-            ctx.arc(f.x, f.y, cellSize * 0.12 * k, 0, Math.PI * 2);
+            ctx.arc(f.x, f.y, cellSize * 0.14, 0, Math.PI * 2);
             ctx.fill();
-
-            if (!machine) {
-                ctx.strokeStyle = '#16a34a';
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                ctx.arc(t.x, t.y, cellSize * 0.48, 0, Math.PI * 2);
-                ctx.stroke();
-            }
             ctx.restore();
         }
 
-        // Vòng quanh quân máy vừa đi (vẽ đè lên quân để luôn thấy rõ)
+        // Vòng quanh quân vừa đến (vẽ đè lên quân để luôn thấy rõ)
         function drawMachineMoveOver() {
-            if (!lastMove || !lastMoveByMachine()) return;
+            if (!lastMove) return;
             const t = getXY(lastMove.toR, lastMove.toC);
             ctx.save();
             ctx.strokeStyle = MACHINE_BLUE;
-            ctx.lineWidth = 4.8;
+            ctx.lineWidth = 3.6;
             ctx.beginPath();
-            ctx.arc(t.x, t.y, cellSize * 0.49, 0, Math.PI * 2);
+            ctx.arc(t.x, t.y, cellSize * 0.47, 0, Math.PI * 2);
             ctx.stroke();
-
-            const elapsed = performance.now() - pulseStart;
-            if (elapsed >= 0 && elapsed < PULSE_MS) {
-                const k = (elapsed % 750) / 750;
-                ctx.globalAlpha = 0.7 * (1 - k);
-                ctx.lineWidth = 2.5;
-                ctx.beginPath();
-                ctx.arc(t.x, t.y, cellSize * (0.5 + 0.22 * k), 0, Math.PI * 2);
-                ctx.stroke();
-            }
             ctx.restore();
         }
 
@@ -1909,6 +1876,25 @@
         function closeGameOverAndUndo() {
             document.getElementById('gameOverModal').classList.add('hidden');
             undoMove();
+        }
+
+        async function shareLink() {
+            const url = location.href.split('#')[0];
+            const data = { title: 'Cờ Tướng Úp', text: 'Chơi cờ tướng cờ úp cùng mình nhé!', url };
+            try {
+                if (navigator.share) {
+                    await navigator.share(data);
+                    return;
+                }
+            } catch (e) {
+                if (e && e.name === 'AbortError') return; // người dùng tự đóng bảng chia sẻ
+            }
+            try {
+                await navigator.clipboard.writeText(url);
+                showToast('Đã sao chép link');
+            } catch (e) {
+                window.prompt('Sao chép link này để chia sẻ:', url);
+            }
         }
 
         function openSettings() {
