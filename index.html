@@ -169,7 +169,7 @@
 
     <!-- MODAL: Settings -->
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onclick="if (event.target === this) closeSettings()">
-        <div class="bg-[#362214] border-4 border-amber-400 rounded-2xl max-w-md w-full p-4 sm:p-5 shadow-2xl">
+        <div class="bg-[#362214] border-4 border-amber-400 rounded-2xl max-w-md w-full max-h-[92vh] overflow-y-auto p-4 sm:p-5 shadow-2xl">
             <h2 class="text-2xl font-black text-amber-300 mb-3 text-center">⚙️ CÀI ĐẶT</h2>
 
             <div class="mb-3">
@@ -187,6 +187,14 @@
                 <div class="grid grid-cols-2 gap-2">
                     <button id="mode-ai" onclick="setMode('ai')" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-black text-[clamp(0.9rem,2.2vw,1.3rem)] bg-amber-500 text-stone-950 ring-2 ring-amber-200">🤖 Đánh với máy</button>
                     <button id="mode-pvp" onclick="setMode('pvp')" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.9rem,2.2vw,1.3rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">👥 Đánh 2 người</button>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <div class="font-extrabold text-amber-200 mb-1.5 text-[clamp(1rem,2.3vw,1.3rem)]">Luật chơi</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="variant-up" onclick="setVariant('up')" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-black text-[clamp(0.9rem,2.2vw,1.3rem)] bg-amber-500 text-stone-950 ring-2 ring-amber-200">🎴 Cờ úp</button>
+                    <button id="variant-tuong" onclick="setVariant('tuong')" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.9rem,2.2vw,1.3rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">♟️ Cờ tướng</button>
                 </div>
             </div>
 
@@ -358,6 +366,7 @@
         let historyStack = [];
         let lastMove = null;
         let difficulty = 2; // 2 Dễ, 3 Vừa, 4 Khó, 5 Rất khó
+        let variant = 'up'; // 'up' = cờ úp, 'tuong' = cờ tướng (quân ngửa, xếp đúng chuẩn)
         let mode = 'ai'; // 'ai' = đánh với máy, 'pvp' = 2 người
         let gameOver = false;
         let aiBusy = false;
@@ -370,6 +379,7 @@
                 localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify({
                     difficulty,
                     mode,
+                    variant,
                     soundOn
                 }));
             } catch (e) {}
@@ -386,11 +396,15 @@
                 if (data.mode === 'ai' || data.mode === 'pvp') {
                     mode = data.mode;
                 }
+                if (data.variant === 'up' || data.variant === 'tuong') {
+                    variant = data.variant;
+                }
                 if (typeof data.soundOn === 'boolean') {
                     soundOn = data.soundOn;
                 }
             } catch (e) {}
             applyModeUI();
+            applyVariantUI();
             applySoundUI();
         }
 
@@ -410,6 +424,7 @@
                 const state = {
                     v: 2,
                     mode,
+                    variant,
                     board,
                     turn,
                     historyStack: historyStack.slice(-200),
@@ -458,6 +473,10 @@
                 if (state.mode === 'ai' || state.mode === 'pvp') {
                     mode = state.mode;
                     applyModeUI();
+                }
+                if (state.variant === 'up' || state.variant === 'tuong') {
+                    variant = state.variant;
+                    applyVariantUI();
                 }
 
                 updateStatusUI();
@@ -535,6 +554,16 @@
                 board[r][c] = { color: RED, trueType: rPool[i], isHidden: true, startRole: getInitialSquareRole(r, c) };
             });
 
+            // Cờ tướng: mọi quân ngửa ngay, xếp đúng vị trí chuẩn
+            if (variant === 'tuong') {
+                for (let r = 0; r < 10; r++) {
+                    for (let c = 0; c < 9; c++) {
+                        const p = board[r][c];
+                        if (p) { p.isHidden = false; p.trueType = p.startRole; }
+                    }
+                }
+            }
+
             turn = RED;
             selected = null;
             validMoves = [];
@@ -572,6 +601,32 @@
             document.getElementById('mode-ai').className = mode === 'ai' ? on : off;
             document.getElementById('mode-pvp').className = mode === 'pvp' ? on : off;
             applyDifficultyUI(difficulty);
+        }
+
+        function applyVariantUI() {
+            const on = 'tactile-btn py-2 sm:py-3 px-1 rounded-xl font-black text-[clamp(0.9rem,2.2vw,1.3rem)] bg-amber-500 text-stone-950 ring-2 ring-amber-200';
+            const off = 'tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.9rem,2.2vw,1.3rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]';
+            document.getElementById('variant-up').className = variant === 'up' ? on : off;
+            document.getElementById('variant-tuong').className = variant === 'tuong' ? on : off;
+        }
+
+        function setVariant(v) {
+            if (v === variant) return;
+            const doSwitch = () => {
+                variant = v;
+                saveSettings();
+                applyVariantUI();
+                startNewGame();
+            };
+            if (historyStack.length > 0 && !gameOver) {
+                askConfirm(
+                    'ĐỔI LUẬT CHƠI?',
+                    v === 'tuong' ? 'Chuyển sang cờ tướng (quân ngửa, xếp chuẩn) và bắt đầu ván mới?' : 'Chuyển sang cờ úp (quân úp, lật dần) và bắt đầu ván mới?',
+                    doSwitch
+                );
+            } else {
+                doSwitch();
+            }
         }
 
         function setMode(m) {
@@ -628,11 +683,11 @@
                     }
                 }
             } else if (role === 'A') {
-                // Hidden Advisor stays in palace; Revealed Advisor in Cờ Úp can move diagonally anywhere
+                // Cờ tướng: Sĩ luôn ở trong cung. Cờ úp: Sĩ úp ở trong cung, Sĩ đã lật đi chéo tự do
                 for (const [dr, dc] of [[-1,-1],[-1,1],[1,-1],[1,1]]) {
                     const nr = r + dr, nc = c + dc;
                     if (!inBounds(nr, nc)) continue;
-                    if (p.isHidden && !inPalace(nr, nc, color)) continue;
+                    if ((p.isHidden || variant === 'tuong') && !inPalace(nr, nc, color)) continue;
                     const t = b[nr][nc];
                     if (!t || (incOwn || t.color !== color)) moves.push({ r: nr, c: nc });
                 }
@@ -641,6 +696,7 @@
                 for (const [dr, dc] of [[-2,-2],[-2,2],[2,-2],[2,2]]) {
                     const nr = r + dr, nc = c + dc;
                     const er = r + dr / 2, ec = c + dc / 2;
+                    if (variant === 'tuong' && (color === RED ? nr < 5 : nr > 4)) continue; // Tượng không qua sông
                     if (inBounds(nr, nc) && !b[er][ec]) {
                         const t = b[nr][nc];
                         if (!t || (incOwn || t.color !== color)) moves.push({ r: nr, c: nc });
@@ -1941,6 +1997,7 @@
         window.onload = () => {
             loadSettings();
             applyModeUI();
+            applyVariantUI();
             applySoundUI();
             resizeBoard();
             if (!loadSavedGameState()) {
