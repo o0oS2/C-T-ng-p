@@ -361,6 +361,7 @@
         let mode = 'ai'; // 'ai' = đánh với máy, 'pvp' = 2 người
         let gameOver = false;
         let aiBusy = false;
+        let aiToken = 0; // tăng mỗi ván mới để huỷ nước đi máy đang chờ
         let capturedByRed = [];
         let capturedByBlack = [];
 
@@ -504,6 +505,7 @@
         }
 
         function startNewGame() {
+            rollAiStyle();
             document.getElementById('gameOverModal').classList.add('hidden');
             board = Array.from({ length: 10 }, () => Array(9).fill(null));
 
@@ -540,9 +542,11 @@
             lastMove = null;
             gameOver = false;
             aiBusy = false;
+            aiToken++;
             capturedByRed = [];
             capturedByBlack = [];
 
+            if (mode === 'ai') showToast('Đối thủ ván này: ' + aiStyleLabel());
             saveGameState();
             updateStatusUI();
             drawBoard();
@@ -862,6 +866,13 @@
         //  3 (Vừa):     + giữ quân (quân bị treo / bị ăn lỗ trừ điểm, quân được bảo vệ cộng điểm)
         //  4-5 (Khó):   + thế trận: bó hẹp đường đi đối thủ, áp lực lên Tướng, không lật quân úp vô cớ
         let evalMode = 2;
+        let blindLong = false; // ván này máy có "quên" nước đi xa (Xe/Pháo >= 4 ô) của đối phương không
+
+        // "Tính cách" của máy, đổi ngẫu nhiên mỗi ván: thích bó hẹp đối thủ nhiều hay ít, thích tấn công Tướng nhiều hay ít
+        let aiStyle = { mob: 2.5, king: 1 };
+        function rollAiStyle() {
+            aiStyle = { mob: 2 + Math.random() * 1.2, king: 0.7 + Math.random() * 0.8 };
+        }
 
         function evaluateBoard(b) {
             const lvl = evalMode;
@@ -919,12 +930,13 @@
                     else if (minAtt[opp][idx] < it.v) pen = (it.v - minAtt[opp][idx]) * 0.25; // đổi quân lỗ
                 }
                 if (od > 0) pen -= 4 * Math.min(od, 2);                   // có quân bảo vệ
+                if (lvl >= 4 && ea > 0) pen += it.v * 0.03;               // tạo đe dọa lên quân đối phương
                 score += col === BLACK ? -pen : pen;
             }
 
             if (lvl >= 4) {
                 // Bó hẹp đường đi: bên nào nhiều nước đi hơn thì có thế tốt hơn
-                score += 2.5 * (mobility[BLACK] - mobility[RED]);
+                score += aiStyle.mob * (mobility[BLACK] - mobility[RED]);
 
                 // Áp lực lên Tướng (các ô quanh Tướng bị khống chế), nhưng chỉ cộng nhẹ để không chiếu vô nghĩa
                 for (const it of pieces) {
@@ -937,7 +949,29 @@
                         if (inPalace(nr, nc, col) && attCnt[opp][nr * 9 + nc] > 0) pr += 10;
                     }
                     if (attCnt[opp][it.r * 9 + it.c] > 0) pr += 12;
+                    pr *= aiStyle.king;
                     score += col === RED ? pr : -pr;
+                }
+
+                // Vị trí quân
+                const strong = { [RED]: 0, [BLACK]: 0 };   // số quân tấn công mạnh (Xe, Pháo, Mã) mỗi bên
+                for (const it of pieces) {
+                    const role = it.p.isHidden ? it.p.startRole : it.p.trueType;
+                    if (role === 'R' || role === 'C' || role === 'H') strong[it.p.color]++;
+                }
+                for (const it of pieces) {
+                    if (it.p.isHidden) continue;
+                    const col = it.p.color;
+                    const opp = col === RED ? BLACK : RED;
+                    let pos = 0;
+                    const t = it.p.trueType;
+                    if (t === 'C' && it.c === 4) pos = 18;                         // Pháo đầu mạnh
+                    else if (t === 'H' && (it.c === 0 || it.c === 8)) pos = -12;   // Mã sát biên yếu
+                    else if (t === 'P') {                                           // Tốt tiến sâu, ưu tiên cột giữa
+                        const adv = col === RED ? (4 - it.r) : (it.r - 5);
+                        if (adv >= 0) pos = 5 * adv + (it.c >= 3 && it.c <= 5 ? 5 : 0);
+                    } else if ((t === 'A' || t === 'E') && strong[opp] >= 2) pos = 10; // giữ Sĩ Tượng khi đối phương còn nhiều quân mạnh
+                    if (pos) score += col === BLACK ? pos : -pos;
                 }
 
                 // Chưa cần thì chưa vội lật quân úp của mình
@@ -960,8 +994,12 @@
         function minimax(b, depth, alpha, beta, maxPlayer) {
             if (depth === 0) return evaluateBoard(b);
             const col = maxPlayer ? BLACK : RED;
-            const mvs = getAllMoves(b, col);
+            let mvs = getAllMoves(b, col);
             if (mvs.length === 0) return maxPlayer ? -99999 : 99999;
+            if (!maxPlayer && blindLong) {
+                const near = mvs.filter(m => Math.max(Math.abs(m.toR - m.fromR), Math.abs(m.toC - m.fromC)) < 4);
+                if (near.length > 0) mvs = near;
+            }
 
             mvs.sort((a, m2) => (b[m2.toR][m2.toC] ? 1 : 0) - (b[a.toR][a.toC] ? 1 : 0));
 
@@ -1051,9 +1089,52 @@
             return t ? (t.isHidden ? 320 : PIECE_DATA[t.trueType].val) : 0;
         }
 
+        // Tìm kiếm yên tĩnh: cuối nhánh vẫn tính tiếp các nước ăn quân (tối đa 3 lớp),
+        // để không chấm điểm giữa chừng một cuộc đổi quân.
+        function qSearch(b, alpha, beta, maxPlayer, qd) {
+            if (Date.now() > aiDeadline) { aiTimedOut = true; return 0; }
+            const stand = evaluateBoard(b);
+            if (qd === 0) return stand;
+            if (maxPlayer) {
+                if (stand >= beta) return stand;
+                if (stand > alpha) alpha = stand;
+            } else {
+                if (stand <= alpha) return stand;
+                if (stand < beta) beta = stand;
+            }
+            const col = maxPlayer ? BLACK : RED;
+            const caps = [];
+            for (let r = 0; r < 10; r++) {
+                for (let c = 0; c < 9; c++) {
+                    const p = b[r][c];
+                    if (!p || p.color !== col) continue;
+                    for (const m of getPseudoMoves(b, r, c)) {
+                        const t = b[m.r][m.c];
+                        if (t) caps.push({ fromR: r, fromC: c, toR: m.r, toC: m.c, v: t.isHidden ? 320 : PIECE_DATA[t.trueType].val });
+                    }
+                }
+            }
+            if (caps.length === 0) return stand;
+            caps.sort((x, y) => y.v - x.v);
+            let best = stand;
+            for (const m of caps.slice(0, 6)) {
+                const v = qSearch(simMove(b, m), alpha, beta, !maxPlayer, qd - 1);
+                if (aiTimedOut) return 0;
+                if (maxPlayer) {
+                    if (v > best) best = v;
+                    if (v > alpha) alpha = v;
+                } else {
+                    if (v < best) best = v;
+                    if (v < beta) beta = v;
+                }
+                if (beta <= alpha) break;
+            }
+            return best;
+        }
+
         function abSearch(b, depth, alpha, beta, maxPlayer) {
             if (Date.now() > aiDeadline) { aiTimedOut = true; return 0; }
-            if (depth === 0) return evaluateBoard(b);
+            if (depth === 0) return evalMode >= 4 ? qSearch(b, alpha, beta, maxPlayer, 3) : evaluateBoard(b);
             const col = maxPlayer ? BLACK : RED;
             const mvs = getAllMoves(b, col);
             if (mvs.length === 0) return maxPlayer ? -99999 - depth : 99999 + depth;
@@ -1081,26 +1162,71 @@
             return best;
         }
 
+        // Cao thủ không ham ăn quân nhỏ khi chưa có lợi rõ ràng (hay làm lộ thế của mình)
+        function rootDiscipline(b, m) {
+            const t = b[m.toR][m.toC];
+            if (t && !t.isHidden && PIECE_DATA[t.trueType].val <= 250) return -10;
+            return 0;
+        }
+
         function searchBestMove(rootMoves, det, ms, maxDepth) {
             aiDeadline = Date.now() + ms;
             aiTimedOut = false;
             let ordered = shuffle(rootMoves);
             ordered.sort((x, y) => captureValue(det, y) - captureValue(det, x));
             let bestMove = null;
+            let bestScore = 0;
             for (let d = 1; d <= maxDepth; d++) {
                 let alpha = -Infinity, curBest = null, curScore = -Infinity;
                 for (const m of ordered) {
-                    const sc = abSearch(simMove(det, m), d - 1, alpha, Infinity, false);
+                    const sc = abSearch(simMove(det, m), d - 1, alpha, Infinity, false) + rootDiscipline(det, m);
                     if (aiTimedOut) break;
                     if (sc > curScore) { curScore = sc; curBest = m; }
                     if (sc > alpha) alpha = sc;
                 }
                 if (aiTimedOut) break;       // lượt tìm dở dang thì bỏ, dùng kết quả độ sâu trước
                 bestMove = curBest;
+                bestScore = curScore;
                 ordered = [curBest, ...ordered.filter(x => x !== curBest)];
                 if (curScore > 90000) break; // đã thấy chiếu bí
             }
-            return bestMove || ordered[0];
+            return { move: bestMove || ordered[0], score: bestScore };
+        }
+
+        // Thử nhiều cách chia bài giả định cho quân úp rồi bỏ phiếu: lật quân hay không đều có lý do,
+        // không phụ thuộc vào 1 lần xáo may rủi.
+        function voteSearch(rootMoves, n, totalMs, maxDepth) {
+            const key = (m) => m.fromR * 1000 + m.fromC * 100 + m.toR * 10 + m.toC;
+            const tally = new Map();
+            for (let i = 0; i < n; i++) {
+                const det = determinizeBoard();
+                const r = searchBestMove(rootMoves, det, totalMs / n, maxDepth);
+                const k = key(r.move);
+                const e = tally.get(k) || { m: r.move, votes: 0, sum: 0 };
+                e.votes++;
+                e.sum += r.score;
+                tally.set(k, e);
+            }
+            let best = null;
+            for (const e of tally.values()) {
+                if (!best || e.votes > best.votes || (e.votes === best.votes && e.sum > best.sum)) best = e;
+            }
+            return best.m;
+        }
+
+        function aiStyleLabel() {
+            if (aiStyle.king > 1.15) return 'Hay tấn công';
+            if (aiStyle.king < 0.9) return 'Thủ chắc';
+            if (aiStyle.mob > 2.8) return 'Thích bó cờ';
+            return 'Cân bằng';
+        }
+
+        // Nước hiển nhiên (ăn quân lớn) thì đi nhanh, thế phức tạp thì nghĩ lâu hơn
+        function humanDelay(m, nMoves) {
+            const t = board[m.toR][m.toC];
+            if (t && !t.isHidden && PIECE_DATA[t.trueType].val >= 450) return 450 + Math.random() * 400;
+            const base = 600 + Math.min(1100, nMoves * 14) * (0.4 + Math.random() * 0.8);
+            return board[m.fromR][m.fromC].isHidden ? base * 0.85 : base;
         }
 
         function makeAIMove() {
@@ -1108,6 +1234,7 @@
                 aiBusy = false;
                 return;
             }
+            const thinkStart = Date.now();
             const allMoves = getAllMoves(board, BLACK);
             if (allMoves.length === 0) {
                 aiBusy = false;
@@ -1129,32 +1256,38 @@
             const mvs = nonRepeating.length > 0 ? nonRepeating : allMoves;
 
             evalMode = Math.max(2, difficulty);
+            blindLong = difficulty === 3 && Math.random() < 0.3;
             let chosen = mvs[0];
 
             if (difficulty <= 2) {
                 // Dễ: nhìn 1 nước, hay nhầm
                 let best = -Infinity;
                 for (const m of shuffle(mvs)) {
-                    const s = evaluateBoard(simMove(det, m)) + (Math.random() * 120 - 60);
+                    const s = evaluateBoard(simMove(det, m)) + (Math.random() * 120 - 60) + 0.4 * captureValue(det, m); // người mới: thích ăn quân
                     if (s > best) { best = s; chosen = m; }
                 }
             } else if (difficulty === 3) {
                 // Vừa: nhìn trước 2 nước, biết giữ quân, vẫn còn nhầm nhẹ
                 let best = -Infinity;
                 for (const m of shuffle(mvs)) {
-                    const s = minimax(simMove(det, m), 1, -Infinity, Infinity, false) + (Math.random() * 40 - 20);
+                    const s = minimax(simMove(det, m), 1, -Infinity, Infinity, false) + (Math.random() * 40 - 20) + 0.12 * captureValue(det, m);
                     if (s > best) { best = s; chosen = m; }
                 }
             } else if (difficulty === 4) {
                 // Khó: nhìn trước ~3 nước, hiểu thế trận (giữ quân, bó hẹp đối thủ, áp lực lên Tướng)
-                chosen = searchBestMove(mvs, det, 900, 3);
+                chosen = voteSearch(mvs, 3, 900, 3);
             } else {
                 // Rất khó: tìm sâu dần theo thời gian (tối đa ~2 giây), hiểu thế trận, ưu tiên nước ăn quân
-                chosen = searchBestMove(mvs, det, 2000, 6);
+                chosen = voteSearch(mvs, 4, 2000, 6);
             }
 
-            aiBusy = false;
-            makeMove(chosen.fromR, chosen.fromC, chosen.toR, chosen.toC);
+            const token = aiToken;
+            const wait = Math.max(0, humanDelay(chosen, allMoves.length) - (Date.now() - thinkStart));
+            setTimeout(() => {
+                if (token !== aiToken || gameOver || turn !== BLACK) return;
+                aiBusy = false;
+                makeMove(chosen.fromR, chosen.fromC, chosen.toR, chosen.toC);
+            }, wait);
         }
 
         /* =============================================================
