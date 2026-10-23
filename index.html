@@ -26,14 +26,29 @@
             -webkit-touch-callout: none;
         }
 
+        html {
+            height: 100%;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
         body {
             font-family: 'Be Vietnam Pro', sans-serif;
             background: radial-gradient(circle at center, #362214 0%, #1c1109 100%);
             color: #fef3c7;
             margin: 0;
             padding: 0;
-            overflow-x: hidden;
-            min-height: 100dvh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            overscroll-behavior: none;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -99,19 +114,21 @@
         #settingsModal > div {
             width: min(94vw, calc(var(--ui, 18px) * 22));
             max-width: none;
-            padding: calc(var(--ui, 18px) * 0.85);
-            border-radius: calc(var(--ui, 18px) * 1.1);
+            padding: calc(var(--ui, 18px) * 0.7);
+            border-radius: calc(var(--ui, 18px) * 1.0);
+            touch-action: pan-y;
+            overscroll-behavior: contain;
         }
         #settingsModal h2 { font-size: calc(var(--ui, 18px) * 1.6); margin-bottom: calc(var(--ui, 18px) * 0.7); }
-        #settingsModal .font-extrabold { font-size: calc(var(--ui, 18px) * 1.2); margin-bottom: calc(var(--ui, 18px) * 0.45); }
-        #settingsModal .sm-row { gap: calc(var(--ui, 18px) * 0.6); }
-        #settingsModal .mb-3, #settingsModal .mb-4 { margin-bottom: calc(var(--ui, 18px) * 0.9); }
-        #settingsModal .grid { gap: calc(var(--ui, 18px) * 0.5); }
+        #settingsModal .font-extrabold { font-size: calc(var(--ui, 18px) * 1.1); margin-bottom: calc(var(--ui, 18px) * 0.3); }
+        #settingsModal .sm-row { gap: calc(var(--ui, 18px) * 0.5); }
+        #settingsModal .mb-3, #settingsModal .mb-4 { margin-bottom: calc(var(--ui, 18px) * 0.6); }
+        #settingsModal .grid { gap: calc(var(--ui, 18px) * 0.4); }
         #settingsModal button {
-            font-size: calc(var(--ui, 18px) * 1.15);
-            line-height: 1.2;
-            padding: calc(var(--ui, 18px) * 0.65) calc(var(--ui, 18px) * 0.3);
-            border-radius: calc(var(--ui, 18px) * 0.7);
+            font-size: calc(var(--ui, 18px) * 1.1);
+            line-height: 1.15;
+            padding: calc(var(--ui, 18px) * 0.5) calc(var(--ui, 18px) * 0.3);
+            border-radius: calc(var(--ui, 18px) * 0.65);
         }
     </style>
 </head>
@@ -1239,6 +1256,22 @@
             return best;
         }
 
+        function moveKey(m) {
+            return m.fromR * 1000 + m.fromC * 100 + m.toR * 10 + m.toC;
+        }
+
+        // Đầu ván: nước ăn quân mà chỉ là đổi ngang (vd Pháo ăn Mã) bị trừ điểm,
+        // để máy ưu tiên phát triển quân và không lặp lại một lối mở màn mọi ván.
+        function openingCapturePenalty(b, m) {
+            if (historyStack.length >= 12) return 0;
+            const t = b[m.toR][m.toC];
+            if (!t) return 0;
+            const mover = b[m.fromR][m.fromC];
+            const tv = t.isHidden ? 320 : PIECE_DATA[t.trueType].val;
+            const mv = mover.isHidden ? 320 : PIECE_DATA[mover.trueType].val;
+            return tv <= mv + 60 ? -45 : 0;
+        }
+
         // Cao thủ không ham ăn quân nhỏ khi chưa có lợi rõ ràng (hay làm lộ thế của mình)
         function rootDiscipline(b, m) {
             const t = b[m.toR][m.toC];
@@ -1249,6 +1282,11 @@
         function searchBestMove(rootMoves, det, ms, maxDepth) {
             aiDeadline = Date.now() + ms;
             aiTimedOut = false;
+            // Điểm thưởng/phạt cố định cho từng nước gốc (kèm chút ngẫu nhiên ở đầu ván để mỗi ván một khác)
+            const bias = new Map();
+            for (const m of rootMoves) {
+                bias.set(moveKey(m), rootDiscipline(det, m) + openingCapturePenalty(det, m) + (historyStack.length < 16 ? Math.random() * 30 - 15 : 0));
+            }
             let ordered = shuffle(rootMoves);
             ordered.sort((x, y) => captureValue(det, y) - captureValue(det, x));
             let bestMove = null;
@@ -1256,7 +1294,7 @@
             for (let d = 1; d <= maxDepth; d++) {
                 let alpha = -Infinity, curBest = null, curScore = -Infinity;
                 for (const m of ordered) {
-                    const sc = abSearch(simMove(det, m), d - 1, alpha, Infinity, false) + rootDiscipline(det, m);
+                    const sc = abSearch(simMove(det, m), d - 1, alpha, Infinity, false) + bias.get(moveKey(m));
                     if (aiTimedOut) break;
                     if (sc > curScore) { curScore = sc; curBest = m; }
                     if (sc > alpha) alpha = sc;
@@ -1339,15 +1377,21 @@
             if (difficulty <= 2) {
                 // Dễ: nhìn 1 nước, hay nhầm
                 let best = -Infinity;
-                for (const m of shuffle(mvs)) {
-                    const s = evaluateBoard(simMove(det, m)) + (Math.random() * 120 - 60) + 0.4 * captureValue(det, m); // người mới: thích ăn quân
+                // Đầu ván, phần lớn lượt máy bỏ qua nước ăn quân (không ván nào cũng lao vào ăn ngay)
+                let pool = mvs;
+                if (historyStack.length < 12 && Math.random() < 0.8) {
+                    const quiet = mvs.filter(m => !board[m.toR][m.toC]);
+                    if (quiet.length > 0) pool = quiet;
+                }
+                for (const m of shuffle(pool)) {
+                    const s = evaluateBoard(simMove(det, m)) + (Math.random() * 120 - 60) + 0.4 * captureValue(det, m) + openingCapturePenalty(det, m); // người mới: thích ăn quân
                     if (s > best) { best = s; chosen = m; }
                 }
             } else if (difficulty === 3) {
                 // Vừa: nhìn trước 2 nước, biết giữ quân, vẫn còn nhầm nhẹ
                 let best = -Infinity;
                 for (const m of shuffle(mvs)) {
-                    const s = minimax(simMove(det, m), 1, -Infinity, Infinity, false) + (Math.random() * 40 - 20) + 0.12 * captureValue(det, m);
+                    const s = minimax(simMove(det, m), 1, -Infinity, Infinity, false) + (Math.random() * 40 - 20) + 0.12 * captureValue(det, m) + openingCapturePenalty(det, m);
                     if (s > best) { best = s; chosen = m; }
                 }
             } else if (difficulty === 4) {
@@ -1379,7 +1423,10 @@
 
         function resizeBoard() {
             // 1) Cỡ chữ gốc (rem) tăng nhẹ theo màn hình => nút, chữ, khung đều to theo tỉ lệ
-            const base = Math.min(window.innerWidth, window.innerHeight * 0.62);
+            // Đo theo khung cố định của trang (ổn định hơn innerHeight khi thanh địa chỉ trình duyệt ẩn/hiện)
+            const VW = document.body.clientWidth || window.innerWidth;
+            const VH = document.body.clientHeight || window.innerHeight;
+            const base = Math.min(VW, VH * 0.62);
             const rootPx = Math.max(14, Math.min(28, 14 + (base - 360) * 0.03));
             document.documentElement.style.fontSize = rootPx.toFixed(2) + 'px';
             // Cỡ chữ phần Cài đặt: to hơn hẳn và tăng theo tỉ lệ màn hình
@@ -1404,8 +1451,8 @@
 
             // 2) Tính lại vài lượt vì chiều cao các thanh phụ thuộc cỡ quân bị ăn (theo cỡ ô)
             for (let i = 0; i < 3; i++) {
-                const availW = window.innerWidth - bodyX - frameX;
-                const availH = window.innerHeight - bodyY - frameY - gap * 4
+                const availW = VW - bodyX - frameX;
+                const availH = VH - bodyY - frameY - gap * 4
                     - topBar.offsetHeight - trayTop.offsetHeight - trayBottom.offsetHeight - actionBar.offsetHeight;
 
                 const byW = availW / (8 + 2 * BOARD_PAD);   // bàn rộng = 8 ô + 2 lề
@@ -1437,6 +1484,8 @@
         }
 
         window.addEventListener('resize', resizeBoard);
+        window.addEventListener('pageshow', resizeBoard);
+        if (window.visualViewport) window.visualViewport.addEventListener('resize', resizeBoard);
         window.addEventListener('orientationchange', () => setTimeout(resizeBoard, 200));
 
         function getXY(r, c) {
@@ -1943,6 +1992,9 @@
             applyVariantUI();
             applySoundUI();
             resizeBoard();
+            // Trình duyệt di động hay đổi cỡ khung sau khi tải xong (thanh địa chỉ): tính lại để bàn luôn giữa màn hình
+            setTimeout(resizeBoard, 150);
+            setTimeout(resizeBoard, 700);
             if (!loadSavedGameState()) {
                 startNewGame();
             }
