@@ -130,6 +130,24 @@
             padding: calc(var(--ui, 18px) * 0.5) calc(var(--ui, 18px) * 0.3);
             border-radius: calc(var(--ui, 18px) * 0.65);
         }
+        #settingsModal #btnShare {
+            font-size: calc(var(--ui, 18px) * 0.8);
+            padding: calc(var(--ui, 18px) * 0.25) calc(var(--ui, 18px) * 0.6);
+            border-radius: calc(var(--ui, 18px) * 0.5);
+            border-bottom-width: 3px;
+            white-space: nowrap;
+        }
+        #settingsModal #btnDone {
+            font-size: calc(var(--ui, 18px) * 1.4);
+            letter-spacing: 0.08em;
+            padding: calc(var(--ui, 18px) * 0.7) 0;
+            background: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
+            border: 2px solid #86efac;
+            border-bottom: 5px solid #14532d;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+            text-shadow: 0 2px 2px rgba(0, 0, 0, 0.35);
+        }
+        #settingsModal #btnDone:active { border-bottom-width: 2px; }
     </style>
 </head>
 <body class="p-1 sm:p-2 gap-1.5 justify-center">
@@ -137,13 +155,18 @@
     <!-- 1. TOP CONTROL BAR: 4 Large Difficulty Buttons + Sound Toggle -->
     <div id="topBar" class="w-full flex flex-col gap-1.5 shrink-0">
         <!-- 2. STATUS BAR: Single Clear Line -->
-        <div id="statusBar" class="w-full bg-[#26160b] border-2 border-amber-600/80 rounded-xl py-1.5 sm:py-2 px-3 min-h-[2.6rem] sm:min-h-[3.3rem] flex items-center justify-between gap-2 shadow-inner">
-            <div id="turnText" class="font-extrabold text-[clamp(1rem,2.3vw,1.4rem)] text-red-400 flex items-center gap-2">
+        <div id="statusBar" class="relative w-full bg-[#26160b] border-2 border-amber-600/80 rounded-xl py-1.5 sm:py-2 px-3 min-h-[2.6rem] sm:min-h-[3.3rem] flex items-center justify-between gap-2 shadow-inner">
+            <div id="turnText" class="min-w-0 font-extrabold text-[clamp(1rem,2.3vw,1.4rem)] text-red-400 flex items-center gap-2">
                 <span class="w-3.5 h-3.5 rounded-full bg-red-500 inline-block animate-pulse"></span>
                 <span>Lượt của bạn (ĐỎ)</span>
             </div>
-            <div id="checkBadge" class="hidden bg-red-600 text-white font-black px-2.5 py-0.5 rounded-lg text-[clamp(0.85rem,2vw,1.25rem)] animate-bounce">
-                ⚠️ CHIẾU TƯỚNG!
+            <!-- Phong cách của máy: bấm để đổi ngay -->
+            <button id="aiStyleBtn" onclick="cycleAiStyle()" class="shrink-0 whitespace-nowrap bg-[#4a2e19] hover:bg-[#5a3820] active:scale-95 transition-transform text-amber-200 border border-[#784b2a] font-bold rounded-lg px-2.5 py-0.5 text-[clamp(0.85rem,2vw,1.2rem)]">Máy: cân bằng</button>
+            <!-- Chiếu tướng: đè lên phần phong cách của máy -->
+            <div class="absolute inset-y-0 right-1.5 flex items-center z-10 pointer-events-none">
+                <div id="checkBadge" class="hidden bg-red-600 text-white font-black px-2.5 py-0.5 rounded-lg text-[clamp(0.85rem,2vw,1.25rem)] animate-bounce">
+                    ⚠️ CHIẾU TƯỚNG!
+                </div>
             </div>
         </div>
     </div>
@@ -167,15 +190,15 @@
 
     <!-- 4. ACTION BUTTONS ROW -->
     <div id="actionBar" class="w-full grid grid-cols-3 gap-2 shrink-0">
-        <button id="btnUndo" onclick="undoMove()" disabled class="tactile-btn bg-amber-500 hover:bg-amber-400 text-stone-950 font-black py-2.5 sm:py-3 px-1 rounded-xl text-[clamp(0.9rem,2.1vw,1.3rem)] flex items-center justify-center gap-1.5 shadow-md">
+        <button id="btnUndo" onclick="undoMove()" disabled class="tactile-btn bg-amber-500 hover:bg-amber-400 text-stone-950 font-black py-2.5 sm:py-3 px-1 rounded-xl text-[clamp(1rem,2.4vw,1.4rem)] flex items-center justify-center gap-1.5 shadow-md">
             <span>↩️</span>
             <span>ĐI LẠI</span>
         </button>
-        <button onclick="openConfirmModal()" class="tactile-btn bg-red-700 hover:bg-red-600 text-white font-black py-2.5 sm:py-3 px-1 rounded-xl text-[clamp(0.9rem,2.1vw,1.3rem)] flex items-center justify-center gap-1.5 shadow-md border border-red-400">
+        <button onclick="openConfirmModal()" class="tactile-btn bg-red-700 hover:bg-red-600 text-white font-black py-2.5 sm:py-3 px-1 rounded-xl text-[clamp(1rem,2.4vw,1.4rem)] flex items-center justify-center gap-1.5 shadow-md border border-red-400">
             <span>🔄</span>
             <span>VÁN MỚI</span>
         </button>
-        <button onclick="openSettings()" class="tactile-btn bg-[#4a2e19] hover:bg-[#5a3820] text-amber-100 font-black py-2.5 sm:py-3 px-1 rounded-xl text-[clamp(0.9rem,2.1vw,1.3rem)] flex items-center justify-center gap-1.5 shadow-md border border-[#784b2a]">
+        <button onclick="openSettings()" class="tactile-btn bg-[#4a2e19] hover:bg-[#5a3820] text-amber-100 font-black py-2.5 sm:py-3 px-1 rounded-xl text-[clamp(1rem,2.4vw,1.4rem)] flex items-center justify-center gap-1.5 shadow-md border border-[#784b2a]">
             <span>⚙️</span>
             <span>CÀI ĐẶT</span>
         </button>
@@ -208,7 +231,10 @@
         <div class="bg-[#362214] border-4 border-amber-400 rounded-2xl max-w-md w-full max-h-[92vh] overflow-y-auto p-4 sm:p-5 shadow-2xl">
 
             <div class="mb-3">
-                <div class="font-extrabold text-amber-200 mb-1.5 text-[clamp(1rem,2.3vw,1.3rem)]">Mức độ</div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="font-extrabold text-amber-200 text-[clamp(1rem,2.3vw,1.3rem)]" style="margin-bottom:0">Mức độ</div>
+                    <button id="btnShare" onclick="shareLink()" aria-label="Chia sẻ" title="Chia sẻ" class="tactile-btn bg-[#4a2e19] text-amber-100 border border-[#784b2a] font-bold rounded-lg">📤 Chia sẻ</button>
+                </div>
                 <div class="grid grid-cols-2 gap-2">
                     <button id="diff-2" onclick="setDifficulty(2)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-black text-[clamp(0.95rem,2.4vw,1.45rem)] bg-amber-500 text-stone-950 ring-2 ring-amber-200">Dễ</button>
                     <button id="diff-3" onclick="setDifficulty(3)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">Vừa</button>
@@ -240,9 +266,8 @@
                 </button>
             </div>
 
-            <div class="flex items-stretch sm-row">
-                <button onclick="closeSettings()" class="tactile-btn flex-1 bg-green-600 text-white font-black py-3 px-4 rounded-xl text-[clamp(1.1rem,2.5vw,1.5rem)]">XONG</button>
-                <button id="btnShare" onclick="shareLink()" aria-label="Chia sẻ" title="Chia sẻ" class="tactile-btn bg-[#4a2e19] text-amber-100 border border-[#784b2a] font-black rounded-xl" style="padding-left:calc(var(--ui,18px)*1.1);padding-right:calc(var(--ui,18px)*1.1)">📤</button>
+            <div class="flex items-stretch">
+                <button id="btnDone" onclick="closeSettings()" class="tactile-btn w-full text-white font-black rounded-xl">XONG</button>
             </div>
         </div>
     </div>
@@ -613,7 +638,6 @@
             capturedByRed = [];
             capturedByBlack = [];
 
-            if (mode === 'ai') showToast('Đối thủ ván này: ' + aiStyleLabel());
             saveGameState();
             updateStatusUI();
             drawBoard();
@@ -1330,10 +1354,25 @@
         }
 
         function aiStyleLabel() {
-            if (aiStyle.king > 1.15) return 'Hay tấn công';
-            if (aiStyle.king < 0.9) return 'Thủ chắc';
-            if (aiStyle.mob > 2.8) return 'Thích bó cờ';
-            return 'Cân bằng';
+            if (aiStyle.king > 1.15) return 'hay tấn công';
+            if (aiStyle.king < 0.9) return 'thủ chắc';
+            if (aiStyle.mob > 2.8) return 'thích bó cờ';
+            return 'cân bằng';
+        }
+
+        // Bấm vào ô "Máy: ..." để đổi phong cách của máy ngay (áp dụng từ nước đi tiếp theo)
+        const AI_STYLE_PRESETS = [
+            { label: 'thủ chắc',     mob: 2.4, king: 0.8 },
+            { label: 'cân bằng',     mob: 2.5, king: 1.0 },
+            { label: 'thích bó cờ',  mob: 3.0, king: 1.0 },
+            { label: 'hay tấn công', mob: 2.5, king: 1.3 }
+        ];
+        function cycleAiStyle() {
+            let i = AI_STYLE_PRESETS.findIndex(s => s.label === aiStyleLabel());
+            const next = AI_STYLE_PRESETS[(i + 1) % AI_STYLE_PRESETS.length];
+            aiStyle = { mob: next.mob, king: next.king };
+            playTone('select');
+            updateStatusUI();
         }
 
         // Nước hiển nhiên (ăn quân lớn) thì đi nhanh, thế phức tạp thì nghĩ lâu hơn
@@ -1875,6 +1914,11 @@
             const inChk = isInCheck(board, turn);
             checkBadge.classList.toggle('hidden', !inChk);
 
+            const styleBtn = document.getElementById('aiStyleBtn');
+            styleBtn.textContent = 'Máy: ' + aiStyleLabel();
+            styleBtn.classList.toggle('hidden', mode !== 'ai');
+            styleBtn.classList.toggle('invisible', inChk); // chiếu tướng thì đè lên phần này
+
             renderTrays();
             requestAnimationFrame(resizeBoard);
         }
@@ -1995,6 +2039,7 @@
             // Trình duyệt di động hay đổi cỡ khung sau khi tải xong (thanh địa chỉ): tính lại để bàn luôn giữa màn hình
             setTimeout(resizeBoard, 150);
             setTimeout(resizeBoard, 700);
+            rollAiStyle();
             if (!loadSavedGameState()) {
                 startNewGame();
             }
