@@ -94,6 +94,24 @@
             border: 2.4px solid #1e293b;
             color: #111827;
         }
+
+        /* ===== Cài đặt: chữ lớn cho người lớn tuổi, phóng to theo tỉ lệ màn hình (--ui đặt trong resizeBoard) ===== */
+        #settingsModal > div {
+            width: min(94vw, calc(var(--ui, 18px) * 22));
+            max-width: none;
+            padding: calc(var(--ui, 18px) * 0.85);
+            border-radius: calc(var(--ui, 18px) * 1.1);
+        }
+        #settingsModal h2 { font-size: calc(var(--ui, 18px) * 1.6); margin-bottom: calc(var(--ui, 18px) * 0.7); }
+        #settingsModal .font-extrabold { font-size: calc(var(--ui, 18px) * 1.2); margin-bottom: calc(var(--ui, 18px) * 0.45); }
+        #settingsModal .mb-3, #settingsModal .mb-4 { margin-bottom: calc(var(--ui, 18px) * 0.9); }
+        #settingsModal .grid { gap: calc(var(--ui, 18px) * 0.5); }
+        #settingsModal button {
+            font-size: calc(var(--ui, 18px) * 1.15);
+            line-height: 1.2;
+            padding: calc(var(--ui, 18px) * 0.65) calc(var(--ui, 18px) * 0.3);
+            border-radius: calc(var(--ui, 18px) * 0.7);
+        }
     </style>
 </head>
 <body class="p-1.5 sm:p-3 gap-2 justify-center">
@@ -174,7 +192,7 @@
 
             <div class="mb-3">
                 <div class="font-extrabold text-amber-200 mb-1.5 text-[clamp(1rem,2.3vw,1.3rem)]">Mức độ</div>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div class="grid grid-cols-2 gap-2">
                     <button id="diff-2" onclick="setDifficulty(2)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-black text-[clamp(0.95rem,2.4vw,1.45rem)] bg-amber-500 text-stone-950 ring-2 ring-amber-200">Dễ</button>
                     <button id="diff-3" onclick="setDifficulty(3)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">Vừa</button>
                     <button id="diff-4" onclick="setDifficulty(4)" class="tactile-btn py-2 sm:py-3 px-1 rounded-xl font-bold text-[clamp(0.95rem,2.4vw,1.45rem)] bg-[#4a2e19] text-amber-200 border border-[#784b2a]">Khó</button>
@@ -1360,6 +1378,9 @@
             const base = Math.min(window.innerWidth, window.innerHeight * 0.62);
             const rootPx = Math.max(14, Math.min(28, 14 + (base - 360) * 0.03));
             document.documentElement.style.fontSize = rootPx.toFixed(2) + 'px';
+            // Cỡ chữ phần Cài đặt: to hơn hẳn và tăng theo tỉ lệ màn hình
+            const uiPx = Math.max(19, Math.min(34, base * 0.048));
+            document.documentElement.style.setProperty('--ui', uiPx.toFixed(2) + 'px');
 
             const px = (v) => parseFloat(v) || 0;
             const bcs = getComputedStyle(document.body);
