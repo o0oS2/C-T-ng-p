@@ -114,7 +114,7 @@
         }
     </style>
 </head>
-<body class="p-1.5 sm:p-3 gap-2 justify-center">
+<body class="p-1 sm:p-2 gap-1.5 justify-center">
 
     <!-- 1. TOP CONTROL BAR: 4 Large Difficulty Buttons + Sound Toggle -->
     <div id="topBar" class="w-full flex flex-col gap-1.5 shrink-0">
@@ -137,7 +137,7 @@
 
     <!-- 3. THE BOARD: Strictly 1 Canvas Inside 1 Frame -->
     <div class="w-full flex items-center justify-center">
-        <div id="boardFrame" class="wood-board-frame p-1.5 sm:p-2.5 flex items-center justify-center">
+        <div id="boardFrame" class="flex items-center justify-center rounded-lg overflow-hidden">
             <canvas id="chessBoard"></canvas>
         </div>
     </div>
@@ -1370,6 +1370,7 @@
         const canvas = document.getElementById('chessBoard');
         const ctx = canvas.getContext('2d');
         let cellSize = 60;
+        const BOARD_PAD = 0.52; // lề quanh lưới, tính theo ô (trước là 0.62)
         let padX = 36;
         let padY = 36;
 
@@ -1404,12 +1405,12 @@
                 const availH = window.innerHeight - bodyY - frameY - gap * 4
                     - topBar.offsetHeight - trayTop.offsetHeight - trayBottom.offsetHeight - actionBar.offsetHeight;
 
-                const byW = availW / 9.24;   // bàn rộng = 8 ô + 2 lề (0.62 ô)
-                const byH = availH / 10.24;  // bàn cao = 9 ô + 2 lề
+                const byW = availW / (8 + 2 * BOARD_PAD);   // bàn rộng = 8 ô + 2 lề
+                const byH = availH / (9 + 2 * BOARD_PAD);   // bàn cao = 9 ô + 2 lề
 
                 cellSize = Math.max(24, Math.floor(Math.min(byW, byH)));
-                padX = Math.round(cellSize * 0.62);
-                padY = Math.round(cellSize * 0.62);
+                padX = Math.round(cellSize * BOARD_PAD);
+                padY = Math.round(cellSize * BOARD_PAD);
                 document.documentElement.style.setProperty('--cell', cellSize + 'px');
                 renderTrays();
 
